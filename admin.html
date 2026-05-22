@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Souvenir Pernikahan</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="admin">
+    <main class="app-shell">
+      <section class="studio">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Panel admin</p>
+            <h1>Atur acara, twibbon, dan engine karikatur</h1>
+          </div>
+          <nav class="page-links" aria-label="Navigasi">
+            <a href="index.html">Halaman Tamu</a>
+            <a href="manager.html">Manager</a>
+          </nav>
+        </header>
+
+        <section class="login-panel" id="adminLogin" hidden>
+          <div class="control-panel login-card">
+            <p class="eyebrow">Login admin</p>
+            <h2>Masukkan password admin</h2>
+            <div class="field-group">
+              <label for="adminPasswordInput">Password</label>
+              <input id="adminPasswordInput" type="password" autocomplete="current-password" />
+            </div>
+            <button class="primary-button wide" id="adminLoginButton" type="button">Masuk Admin</button>
+            <p class="status-text" id="adminLoginStatus"></p>
+          </div>
+        </section>
+
+        <div class="workspace admin-workspace">
+          <section class="control-panel admin-form" aria-label="Form admin">
+            <div class="info-box">
+              <strong>Ukuran frame/twibbon</strong>
+              <span>Buat PNG transparan ukuran 1080 x 1350 px, rasio 4:5. Area tengah sebaiknya transparan untuk foto/karikatur.</span>
+            </div>
+
+            <div class="field-grid">
+              <div class="field-group">
+                <label for="adminBride">Nama mempelai 1</label>
+                <input id="adminBride" type="text" maxlength="24" />
+              </div>
+              <div class="field-group">
+                <label for="adminGroom">Nama mempelai 2</label>
+                <input id="adminGroom" type="text" maxlength="24" />
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="adminDate">Tanggal acara</label>
+              <input id="adminDate" type="text" maxlength="24" />
+            </div>
+
+            <div class="field-group">
+              <label for="adminTitle">Judul halaman tamu</label>
+              <input id="adminTitle" type="text" maxlength="64" />
+            </div>
+
+            <div class="text-settings">
+              <div class="info-box">
+                <strong>Placeholder teks di atas frame</strong>
+                <span>Pilih placeholder, lalu geser teks langsung di preview. Pakai token {mempelai}, {tanggal}, dan {tamu}.</span>
+              </div>
+
+              <div class="field-group">
+                <span class="label-text">Placeholder aktif</span>
+                <div class="segmented" role="radiogroup" aria-label="Placeholder aktif">
+                  <label>
+                    <input type="radio" name="activePlaceholder" value="couple" checked />
+                    <span>Mempelai</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="activePlaceholder" value="guest" />
+                    <span>Tamu</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="activePlaceholder" value="date" />
+                    <span>Tanggal</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label for="placeholderTemplate">Isi teks</label>
+                <input id="placeholderTemplate" type="text" maxlength="90" />
+              </div>
+
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="placeholderSize">Ukuran</label>
+                  <input id="placeholderSize" type="range" min="18" max="110" step="1" />
+                </div>
+                <div class="field-group">
+                  <label for="placeholderColor">Warna</label>
+                  <input id="placeholderColor" type="color" />
+                </div>
+              </div>
+
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="placeholderFont">Font</label>
+                  <select id="placeholderFont">
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                    <option value="'Brush Script MT', cursive">Brush Script</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="placeholderWeight">Tebal</label>
+                  <select id="placeholderWeight">
+                    <option value="400">Normal</option>
+                    <option value="600">Semi bold</option>
+                    <option value="700">Bold</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="placeholderX">Posisi X</label>
+                  <input id="placeholderX" type="range" min="0" max="1080" step="1" />
+                </div>
+                <div class="field-group">
+                  <label for="placeholderY">Posisi Y</label>
+                  <input id="placeholderY" type="range" min="0" max="1350" step="1" />
+                </div>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="twibbonUpload">Upload twibbon / frame PNG transparan</label>
+              <label class="dropzone">
+                <input id="twibbonUpload" type="file" accept="image/png,image/webp,image/*" />
+                <span>Upload file frame yang akan dioverlay ke hasil karikatur</span>
+              </label>
+            </div>
+
+            <div class="field-group">
+              <span class="label-text">Posisi frame</span>
+              <div class="segmented" role="radiogroup" aria-label="Fit twibbon">
+                <label>
+                  <input type="radio" name="frameFit" value="cover" checked />
+                  <span>Cover</span>
+                </label>
+                <label>
+                  <input type="radio" name="frameFit" value="contain" />
+                  <span>Contain</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <span class="label-text">Engine karikatur</span>
+              <div class="segmented" role="radiogroup" aria-label="Engine karikatur">
+                <label>
+                  <input type="radio" name="aiProvider" value="local" checked />
+                  <span>Gratis lokal</span>
+                </label>
+                <label>
+                  <input type="radio" name="aiProvider" value="api" />
+                  <span>API nanti</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="apiEndpoint">Endpoint API karikatur</label>
+              <input id="apiEndpoint" type="text" placeholder="/api/caricature" maxlength="120" />
+            </div>
+
+            <div class="send-panel">
+              <button class="primary-button wide" id="saveAdmin" type="button">
+                <span class="button-icon">OK</span>
+                Simpan Pengaturan
+              </button>
+              <button class="secondary-button wide" id="resetAdmin" type="button">
+                <span class="button-icon">RS</span>
+                Reset
+              </button>
+            </div>
+          </section>
+
+          <section class="camera-panel" aria-label="Preview twibbon">
+            <div class="preview-toolbar">
+              <span>Drag teks di preview untuk memindahkan placeholder aktif.</span>
+              <button class="secondary-button" id="centerPlaceholder" type="button">Tengah</button>
+            </div>
+            <div class="admin-preview">
+              <canvas id="adminPreviewCanvas" width="1080" height="1350"></canvas>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

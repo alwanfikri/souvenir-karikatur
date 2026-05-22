@@ -1,0 +1,885 @@
+const CONFIG_KEY = "weddingSouvenirConfig";
+const ADMIN_PASSWORD_KEY = "weddingSouvenirAdminPassword";
+const ADMIN_AUTH_KEY = "weddingSouvenirAdminAuthenticated";
+const MANAGER_PASSWORD_KEY = "weddingSouvenirManagerPassword";
+const PASSWORD_DISABLED = "__disabled__";
+const CANVAS_WIDTH = 1080;
+const CANVAS_HEIGHT = 1350;
+const DEFAULT_MANAGER_PASSWORD = "admin123";
+
+const defaultConfig = {
+  bride: "Raka",
+  groom: "Dina",
+  date: "22.06.2026",
+  title: "Selfie atau wefie tamu jadi karikatur",
+  frameFit: "cover",
+  aiProvider: "local",
+  apiEndpoint: "/api/caricature",
+  twibbon: "",
+  text: {
+    couple: {
+      template: "{mempelai}",
+      x: 540,
+      y: 1185,
+      size: 54,
+      color: "#b86f73",
+      font: "Georgia, serif",
+      weight: "400",
+    },
+    guest: {
+      template: "Untuk {tamu}",
+      x: 540,
+      y: 1240,
+      size: 30,
+      color: "#b86f73",
+      font: "Arial, sans-serif",
+      weight: "400",
+    },
+    date: {
+      template: "{tanggal}",
+      x: 540,
+      y: 1295,
+      size: 24,
+      color: "#b86f73",
+      font: "Arial, sans-serif",
+      weight: "400",
+    },
+  },
+};
+
+const page = document.body.dataset.page;
+
+function loadConfig() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CONFIG_KEY));
+    return normalizeConfig({ ...defaultConfig, ...stored });
+  } catch {
+    return normalizeConfig({ ...defaultConfig });
+  }
+}
+
+function normalizeConfig(config) {
+  const legacyText = config.text || {};
+  const text = {
+    couple: {
+      ...defaultConfig.text.couple,
+      ...legacyText.couple,
+      template: legacyText.couple?.template || legacyText.coupleTemplate || defaultConfig.text.couple.template,
+      y: Number(legacyText.couple?.y || legacyText.coupleY || defaultConfig.text.couple.y),
+      color: legacyText.couple?.color || legacyText.color || defaultConfig.text.couple.color,
+      size: Number(legacyText.couple?.size || legacyText.size || defaultConfig.text.couple.size),
+    },
+    guest: {
+      ...defaultConfig.text.guest,
+      ...legacyText.guest,
+      template: legacyText.guest?.template || legacyText.guestTemplate || defaultConfig.text.guest.template,
+      y: Number(legacyText.guest?.y || legacyText.guestY || defaultConfig.text.guest.y),
+      color: legacyText.guest?.color || legacyText.color || defaultConfig.text.guest.color,
+      size: Number(legacyText.guest?.size || Math.round((legacyText.size || 54) * 0.56) || defaultConfig.text.guest.size),
+    },
+    date: {
+      ...defaultConfig.text.date,
+      ...legacyText.date,
+      template: legacyText.date?.template || legacyText.dateTemplate || defaultConfig.text.date.template,
+      y: Number(legacyText.date?.y || legacyText.dateY || defaultConfig.text.date.y),
+      color: legacyText.date?.color || legacyText.color || defaultConfig.text.date.color,
+      size: Number(legacyText.date?.size || Math.round((legacyText.size || 54) * 0.46) || defaultConfig.text.date.size),
+    },
+  };
+  return { ...defaultConfig, ...config, text };
+}
+
+function saveConfig(config) {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
+
+function getStoredPassword(key, fallback = "") {
+  return localStorage.getItem(key) || fallback;
+}
+
+function getAdminPassword() {
+  const stored = localStorage.getItem(ADMIN_PASSWORD_KEY);
+  if (stored === PASSWORD_DISABLED) return "";
+  return stored || DEFAULT_MANAGER_PASSWORD;
+}
+
+function isAdminAuthenticated() {
+  const adminPassword = getAdminPassword();
+  return !adminPassword || sessionStorage.getItem(ADMIN_AUTH_KEY) === "true";
+}
+
+function setAdminAuthenticated() {
+  sessionStorage.setItem(ADMIN_AUTH_KEY, "true");
+}
+
+function checkedValue(name) {
+  return document.querySelector(`input[name="${name}"]:checked`)?.value;
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
+
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function drawCover(ctx, source, mirror = false) {
+  const sourceWidth = source.videoWidth || source.width;
+  const sourceHeight = source.videoHeight || source.height;
+  const ratio = Math.max(CANVAS_WIDTH / sourceWidth, CANVAS_HEIGHT / sourceHeight);
+  const width = sourceWidth * ratio;
+  const height = sourceHeight * ratio;
+  const x = (CANVAS_WIDTH - width) / 2;
+  const y = (CANVAS_HEIGHT - height) / 2;
+
+  ctx.save();
+  ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  if (mirror) {
+    ctx.translate(CANVAS_WIDTH, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(source, x, y, width, height);
+  } else {
+    ctx.drawImage(source, x, y, width, height);
+  }
+  ctx.restore();
+}
+
+function drawContainOrCover(ctx, source, fit) {
+  const ratio =
+    fit === "contain"
+      ? Math.min(CANVAS_WIDTH / source.width, CANVAS_HEIGHT / source.height)
+      : Math.max(CANVAS_WIDTH / source.width, CANVAS_HEIGHT / source.height);
+  const width = source.width * ratio;
+  const height = source.height * ratio;
+  const x = (CANVAS_WIDTH - width) / 2;
+  const y = (CANVAS_HEIGHT - height) / 2;
+  ctx.drawImage(source, x, y, width, height);
+}
+
+function posterize(ctx, style) {
+  const imageData = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  const data = imageData.data;
+  const steps = style === "comic" ? 5 : style === "sketch" ? 3 : 7;
+  const stepSize = 255 / steps;
+
+  for (let index = 0; index < data.length; index += 4) {
+    if (style === "sketch") {
+      const avg = (data[index] + data[index + 1] + data[index + 2]) / 3;
+      data[index] = 255 - avg * 0.2;
+      data[index + 1] = 255 - avg * 0.2;
+      data[index + 2] = 255 - avg * 0.2;
+    } else {
+      data[index] = Math.round(data[index] / stepSize) * stepSize;
+      data[index + 1] = Math.round(data[index + 1] / stepSize) * stepSize;
+      data[index + 2] = Math.round(data[index + 2] / stepSize) * stepSize;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function applyLocalCaricature(sourceCanvas, style) {
+  const resultCanvas = document.createElement("canvas");
+  resultCanvas.width = CANVAS_WIDTH;
+  resultCanvas.height = CANVAS_HEIGHT;
+  const resultCtx = resultCanvas.getContext("2d", { willReadFrequently: true });
+
+  const blur = style === "comic" ? 1.8 : style === "sketch" ? 0.4 : 1.2;
+  const saturation = style === "comic" ? 1.55 : style === "sketch" ? 0.15 : 1.35;
+  const contrast = style === "comic" ? 1.18 : style === "sketch" ? 1.38 : 1.12;
+  resultCtx.filter = `blur(${blur}px) saturate(${saturation}) contrast(${contrast})`;
+  resultCtx.drawImage(sourceCanvas, 0, 0);
+  resultCtx.filter = "none";
+
+  posterize(resultCtx, style);
+  drawEdgeInk(resultCtx, style);
+  tintHighlights(resultCtx, style);
+
+  return resultCanvas;
+}
+
+function drawEdgeInk(ctx, style) {
+  const imageData = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  const data = imageData.data;
+  const luminance = new Uint8ClampedArray(CANVAS_WIDTH * CANVAS_HEIGHT);
+
+  for (let index = 0, pixel = 0; index < data.length; index += 4, pixel += 1) {
+    luminance[pixel] = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+  }
+
+  const threshold = style === "sketch" ? 38 : style === "comic" ? 48 : 58;
+  const alpha = style === "sketch" ? 210 : style === "comic" ? 170 : 118;
+  const edgeCanvas = document.createElement("canvas");
+  edgeCanvas.width = CANVAS_WIDTH;
+  edgeCanvas.height = CANVAS_HEIGHT;
+  const edgeCtx = edgeCanvas.getContext("2d");
+  const edgeData = edgeCtx.createImageData(CANVAS_WIDTH, CANVAS_HEIGHT);
+  const edgePixels = edgeData.data;
+
+  for (let y = 1; y < CANVAS_HEIGHT - 1; y += 1) {
+    for (let x = 1; x < CANVAS_WIDTH - 1; x += 1) {
+      const top = luminance[(y - 1) * CANVAS_WIDTH + x];
+      const bottom = luminance[(y + 1) * CANVAS_WIDTH + x];
+      const left = luminance[y * CANVAS_WIDTH + x - 1];
+      const right = luminance[y * CANVAS_WIDTH + x + 1];
+      const magnitude = Math.abs(top - bottom) + Math.abs(left - right);
+
+      if (magnitude > threshold) {
+        const output = (y * CANVAS_WIDTH + x) * 4;
+        edgePixels[output] = 28;
+        edgePixels[output + 1] = 24;
+        edgePixels[output + 2] = 20;
+        edgePixels[output + 3] = Math.min(alpha, magnitude * 2.2);
+      }
+    }
+  }
+
+  edgeCtx.putImageData(edgeData, 0, 0);
+  ctx.save();
+  ctx.globalCompositeOperation = "multiply";
+  ctx.drawImage(edgeCanvas, 0, 0);
+  ctx.restore();
+}
+
+function tintHighlights(ctx, style) {
+  if (style === "sketch") {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = "rgba(255, 246, 228, 0.34)";
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.restore();
+    return;
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.fillStyle = style === "comic" ? "rgba(255, 210, 135, 0.26)" : "rgba(255, 238, 205, 0.18)";
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.restore();
+}
+
+async function generateCaricature(sourceCanvas, style, config) {
+  if (config.aiProvider === "api" && config.apiEndpoint) {
+    try {
+      return await requestPaidAiCaricature(sourceCanvas, style, config);
+    } catch (error) {
+      console.warn("API caricature failed, using local fallback.", error);
+    }
+  }
+
+  return applyLocalCaricature(sourceCanvas, style);
+}
+
+async function requestPaidAiCaricature(sourceCanvas, style, config) {
+  const response = await fetch(config.apiEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      image: sourceCanvas.toDataURL("image/jpeg", 0.9),
+      style,
+      prompt: "Create a caricature that follows the uploaded selfie or group selfie composition. Preserve the number of people, poses, and overall framing.",
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Caricature API failed: ${response.status}`);
+  const payload = await response.json();
+  const image = await loadImage(payload.image);
+  const resultCanvas = document.createElement("canvas");
+  resultCanvas.width = CANVAS_WIDTH;
+  resultCanvas.height = CANVAS_HEIGHT;
+  drawCover(resultCanvas.getContext("2d"), image);
+  return resultCanvas;
+}
+
+function fitText(ctx, text, x, y, maxWidth, size, family, weight = "400") {
+  let fontSize = size;
+  ctx.font = `${weight} ${fontSize}px ${family}`;
+  while (ctx.measureText(text).width > maxWidth && fontSize > 18) {
+    fontSize -= 2;
+    ctx.font = `${weight} ${fontSize}px ${family}`;
+  }
+  ctx.fillText(text, x, y);
+}
+
+function fillTemplate(template, config, guestName) {
+  return template
+    .replaceAll("{mempelai}", `${config.bride} & ${config.groom}`)
+    .replaceAll("{tanggal}", config.date)
+    .replaceAll("{tamu}", guestName || "Nama Tamu");
+}
+
+function drawTextPlaceholders(ctx, config, guestName, activeKey = "") {
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(255, 255, 255, 0.82)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 2;
+
+  Object.entries(config.text).forEach(([key, item]) => {
+    const text = fillTemplate(item.template, config, guestName);
+    const size = Number(item.size) || 28;
+    const x = Number(item.x) || CANVAS_WIDTH / 2;
+    const y = Number(item.y) || CANVAS_HEIGHT - 100;
+    const family = item.font || "Arial, sans-serif";
+    const weight = item.weight || "400";
+
+    ctx.fillStyle = item.color || "#b86f73";
+    ctx.font = `${weight} ${size}px ${family}`;
+    fitText(ctx, text, x, y, CANVAS_WIDTH - 160, size, family, weight);
+
+    if (key === activeKey) {
+      const width = Math.min(CANVAS_WIDTH - 160, ctx.measureText(text).width + 28);
+      const height = size + 24;
+      ctx.save();
+      ctx.shadowColor = "transparent";
+      ctx.strokeStyle = "rgba(36, 33, 29, 0.52)";
+      ctx.setLineDash([12, 8]);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x - width / 2, y - height / 2, width, height);
+      ctx.restore();
+    }
+  });
+  ctx.restore();
+}
+
+function drawFallbackTwibbon(ctx, config, guestName = "Tamu Undangan") {
+  ctx.save();
+  ctx.strokeStyle = "#7d967a";
+  ctx.lineWidth = 30;
+  ctx.strokeRect(32, 32, CANVAS_WIDTH - 64, CANVAS_HEIGHT - 64);
+  ctx.strokeStyle = "#c79a48";
+  ctx.lineWidth = 7;
+  ctx.strokeRect(72, 72, CANVAS_WIDTH - 144, CANVAS_HEIGHT - 144);
+
+  ctx.fillStyle = "rgba(255, 250, 242, 0.92)";
+  ctx.fillRect(0, CANVAS_HEIGHT - 255, CANVAS_WIDTH, 255);
+  drawDecor(ctx, 96, 112, 1);
+  drawDecor(ctx, CANVAS_WIDTH - 96, 112, -1);
+  drawDecor(ctx, 96, CANVAS_HEIGHT - 318, 1);
+  drawDecor(ctx, CANVAS_WIDTH - 96, CANVAS_HEIGHT - 318, -1);
+  ctx.restore();
+}
+
+function drawDecor(ctx, x, y, direction) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(direction, 1);
+
+  for (let item = 0; item < 5; item += 1) {
+    ctx.rotate((Math.PI / 9) * (item - 2));
+    ctx.strokeStyle = "#7d967a";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(28, -34, 72, -48);
+    ctx.stroke();
+    ctx.fillStyle = "#f4c2a1";
+    ctx.beginPath();
+    ctx.ellipse(76, -50, 18, 10, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+async function drawTwibbon(ctx, config, guestName) {
+  const twibbon = await loadImage(config.twibbon);
+  if (twibbon) {
+    drawContainOrCover(ctx, twibbon, config.frameFit);
+    return;
+  }
+  drawFallbackTwibbon(ctx, config, guestName);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function initAdmin() {
+  const loginPanel = document.querySelector("#adminLogin");
+  const workspace = document.querySelector(".admin-workspace");
+  const passwordInput = document.querySelector("#adminPasswordInput");
+  const loginButton = document.querySelector("#adminLoginButton");
+  const loginStatus = document.querySelector("#adminLoginStatus");
+
+  if (!isAdminAuthenticated()) {
+    loginPanel.hidden = false;
+    workspace.hidden = true;
+    loginButton.addEventListener("click", () => {
+      if (passwordInput.value === getAdminPassword()) {
+        setAdminAuthenticated();
+        loginPanel.hidden = true;
+        workspace.hidden = false;
+        initAdminForm();
+        return;
+      }
+      loginStatus.textContent = "Password admin salah.";
+    });
+    passwordInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") loginButton.click();
+    });
+    return;
+  }
+
+  initAdminForm();
+}
+
+function initAdminForm() {
+  const config = loadConfig();
+  const bride = document.querySelector("#adminBride");
+  const groom = document.querySelector("#adminGroom");
+  const date = document.querySelector("#adminDate");
+  const title = document.querySelector("#adminTitle");
+  const apiEndpoint = document.querySelector("#apiEndpoint");
+  const placeholderTemplate = document.querySelector("#placeholderTemplate");
+  const placeholderSize = document.querySelector("#placeholderSize");
+  const placeholderColor = document.querySelector("#placeholderColor");
+  const placeholderFont = document.querySelector("#placeholderFont");
+  const placeholderWeight = document.querySelector("#placeholderWeight");
+  const placeholderX = document.querySelector("#placeholderX");
+  const placeholderY = document.querySelector("#placeholderY");
+  const centerPlaceholder = document.querySelector("#centerPlaceholder");
+  const upload = document.querySelector("#twibbonUpload");
+  const save = document.querySelector("#saveAdmin");
+  const reset = document.querySelector("#resetAdmin");
+  const canvas = document.querySelector("#adminPreviewCanvas");
+  const ctx = canvas.getContext("2d");
+
+  bride.value = config.bride;
+  groom.value = config.groom;
+  date.value = config.date;
+  title.value = config.title;
+  apiEndpoint.value = config.apiEndpoint;
+  let activePlaceholder = checkedValue("activePlaceholder") || "couple";
+  let textSettings = structuredClone(config.text);
+  let isDragging = false;
+
+  function syncPlaceholderControls() {
+    const item = textSettings[activePlaceholder];
+    placeholderTemplate.value = item.template;
+    placeholderSize.value = item.size;
+    placeholderColor.value = item.color;
+    placeholderFont.value = item.font;
+    placeholderWeight.value = item.weight;
+    placeholderX.value = item.x;
+    placeholderY.value = item.y;
+  }
+
+  document.querySelector(`input[name="frameFit"][value="${config.frameFit}"]`).checked = true;
+  document.querySelector(`input[name="aiProvider"][value="${config.aiProvider}"]`).checked = true;
+
+  async function preview() {
+    const nextConfig = {
+      ...loadConfig(),
+      bride: bride.value || defaultConfig.bride,
+      groom: groom.value || defaultConfig.groom,
+      date: date.value || defaultConfig.date,
+      title: title.value || defaultConfig.title,
+      frameFit: checkedValue("frameFit"),
+      aiProvider: checkedValue("aiProvider"),
+      apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
+      text: readTextSettings(),
+    };
+
+    const gradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    gradient.addColorStop(0, "#f0d7c6");
+    gradient.addColorStop(0.5, "#d7e0ce");
+    gradient.addColorStop(1, "#b8c3d6");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+    ctx.beginPath();
+    ctx.arc(CANVAS_WIDTH / 2, 420, 150, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(CANVAS_WIDTH / 2 - 230, 620, 460, 350, 170);
+    ctx.fill();
+
+    await drawTwibbon(ctx, nextConfig, "Nama Tamu");
+    drawTextPlaceholders(ctx, nextConfig, "Nama Tamu", activePlaceholder);
+  }
+
+  function readTextSettings() {
+    return structuredClone(textSettings);
+  }
+
+  function writeActivePlaceholder() {
+    textSettings[activePlaceholder] = {
+      template: placeholderTemplate.value || defaultConfig.text[activePlaceholder].template,
+      x: Number(placeholderX.value),
+      y: Number(placeholderY.value),
+      size: Number(placeholderSize.value),
+      color: placeholderColor.value,
+      font: placeholderFont.value,
+      weight: placeholderWeight.value,
+    };
+  }
+
+  async function persist() {
+    const current = loadConfig();
+    const nextConfig = {
+      ...current,
+      bride: bride.value || defaultConfig.bride,
+      groom: groom.value || defaultConfig.groom,
+      date: date.value || defaultConfig.date,
+      title: title.value || defaultConfig.title,
+      frameFit: checkedValue("frameFit"),
+      aiProvider: checkedValue("aiProvider"),
+      apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
+      text: readTextSettings(),
+    };
+    saveConfig(nextConfig);
+    await preview();
+    save.textContent = "Tersimpan";
+    window.setTimeout(() => {
+      save.innerHTML = '<span class="button-icon">OK</span>Simpan Pengaturan';
+    }, 1200);
+  }
+
+  upload.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const nextConfig = { ...loadConfig(), twibbon: await fileToDataUrl(file) };
+    saveConfig(nextConfig);
+    await preview();
+  });
+
+  [
+    bride,
+    groom,
+    date,
+    title,
+    apiEndpoint,
+  ].forEach((input) => input.addEventListener("input", preview));
+  [
+    placeholderTemplate,
+    placeholderSize,
+    placeholderColor,
+    placeholderFont,
+    placeholderWeight,
+    placeholderX,
+    placeholderY,
+  ].forEach((input) => {
+    input.addEventListener("input", () => {
+      writeActivePlaceholder();
+      preview();
+    });
+  });
+  document.querySelectorAll("input[name='activePlaceholder']").forEach((input) => {
+    input.addEventListener("change", () => {
+      activePlaceholder = checkedValue("activePlaceholder");
+      syncPlaceholderControls();
+      preview();
+    });
+  });
+  document.querySelectorAll("input[name='frameFit']").forEach((input) => input.addEventListener("change", preview));
+  document.querySelectorAll("input[name='aiProvider']").forEach((input) => input.addEventListener("change", preview));
+  centerPlaceholder.addEventListener("click", () => {
+    textSettings[activePlaceholder].x = CANVAS_WIDTH / 2;
+    syncPlaceholderControls();
+    preview();
+  });
+  canvas.addEventListener("pointerdown", (event) => {
+    isDragging = true;
+    canvas.setPointerCapture(event.pointerId);
+    moveActiveText(event);
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (isDragging) moveActiveText(event);
+  });
+  canvas.addEventListener("pointerup", () => {
+    isDragging = false;
+  });
+
+  function moveActiveText(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
+    const y = ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
+    textSettings[activePlaceholder].x = Math.round(Math.max(0, Math.min(CANVAS_WIDTH, x)));
+    textSettings[activePlaceholder].y = Math.round(Math.max(0, Math.min(CANVAS_HEIGHT, y)));
+    syncPlaceholderControls();
+    preview();
+  }
+  save.addEventListener("click", persist);
+  reset.addEventListener("click", async () => {
+    saveConfig({ ...defaultConfig });
+    window.location.reload();
+  });
+
+  syncPlaceholderControls();
+  preview();
+}
+
+function initManager() {
+  const currentPassword = document.querySelector("#managerCurrentPassword");
+  const newPassword = document.querySelector("#managerNewPassword");
+  const confirmPassword = document.querySelector("#managerConfirmPassword");
+  const saveButton = document.querySelector("#saveManagerPassword");
+  const clearButton = document.querySelector("#clearManagerPassword");
+  const status = document.querySelector("#managerStatus");
+
+  function isManagerAllowed() {
+    return currentPassword.value === getStoredPassword(MANAGER_PASSWORD_KEY, DEFAULT_MANAGER_PASSWORD);
+  }
+
+  saveButton.addEventListener("click", () => {
+    if (!isManagerAllowed()) {
+      status.textContent = "Password manager saat ini salah.";
+      return;
+    }
+
+    if (newPassword.value.length < 6) {
+      status.textContent = "Password admin minimal 6 karakter.";
+      return;
+    }
+
+    if (newPassword.value !== confirmPassword.value) {
+      status.textContent = "Konfirmasi password belum sama.";
+      return;
+    }
+
+    localStorage.setItem(ADMIN_PASSWORD_KEY, newPassword.value);
+    localStorage.setItem(MANAGER_PASSWORD_KEY, newPassword.value);
+    sessionStorage.removeItem(ADMIN_AUTH_KEY);
+    currentPassword.value = "";
+    newPassword.value = "";
+    confirmPassword.value = "";
+    status.textContent = "Password admin tersimpan. Buka halaman Admin lalu login dengan password baru.";
+  });
+
+  clearButton.addEventListener("click", () => {
+    if (!isManagerAllowed()) {
+      status.textContent = "Password manager saat ini salah.";
+      return;
+    }
+
+    localStorage.setItem(ADMIN_PASSWORD_KEY, PASSWORD_DISABLED);
+    sessionStorage.removeItem(ADMIN_AUTH_KEY);
+    status.textContent = "Password admin dimatikan untuk browser ini.";
+  });
+}
+
+function initGuest() {
+  const config = loadConfig();
+  const camera = document.querySelector("#camera");
+  const canvas = document.querySelector("#workCanvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const cameraEmpty = document.querySelector("#cameraEmpty");
+  const startCamera = document.querySelector("#startCamera");
+  const capturePhoto = document.querySelector("#capturePhoto");
+  const uploadPhoto = document.querySelector("#uploadPhoto");
+  const renderGift = document.querySelector("#renderGift");
+  const shareGift = document.querySelector("#shareGift");
+  const guestName = document.querySelector("#guestName");
+  const beforeImage = document.querySelector("#beforeImage");
+  const afterImage = document.querySelector("#afterImage");
+  const compareCard = document.querySelector("#compareCard");
+  const compareAfter = document.querySelector("#compareAfter");
+  const compareLine = document.querySelector("#compareLine");
+  const compareSlider = document.querySelector("#compareSlider");
+  const adminLink = document.querySelector("#guestAdminLink");
+  const adminGate = document.querySelector("#guestAdminGate");
+  const adminPassword = document.querySelector("#guestAdminPassword");
+  const adminLogin = document.querySelector("#guestAdminLogin");
+  const adminCancel = document.querySelector("#guestAdminCancel");
+  const adminStatus = document.querySelector("#guestAdminStatus");
+
+  let sourceImage = null;
+  let lastBlob = null;
+
+  document.querySelector("#guestTitle").textContent = config.title;
+  document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
+  document.querySelector("#eventDate").textContent = config.date;
+
+  function openAdminGate(event) {
+    if (isAdminAuthenticated()) return;
+    event.preventDefault();
+    adminGate.hidden = false;
+    adminStatus.textContent = "";
+    adminPassword.value = "";
+    adminPassword.focus();
+  }
+
+  function closeAdminGate() {
+    adminGate.hidden = true;
+    adminPassword.value = "";
+    adminStatus.textContent = "";
+  }
+
+  function submitAdminGate() {
+    if (adminPassword.value === getAdminPassword()) {
+      setAdminAuthenticated();
+      window.location.href = "admin.html";
+      return;
+    }
+    adminStatus.textContent = "Password admin salah.";
+  }
+
+  async function openCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1600 } },
+      audio: false,
+    });
+    camera.srcObject = stream;
+    camera.style.display = "block";
+    canvas.style.display = "none";
+    cameraEmpty.style.display = "none";
+    capturePhoto.disabled = false;
+  }
+
+  function drawPlaceholder() {
+    const gradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    gradient.addColorStop(0, "#f0d7c6");
+    gradient.addColorStop(0.48, "#d7e0ce");
+    gradient.addColorStop(1, "#b8c3d6");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.fillStyle = "rgba(255,255,255,0.62)";
+    ctx.beginPath();
+    ctx.arc(CANVAS_WIDTH / 2, 430, 155, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(CANVAS_WIDTH / 2 - 230, 620, 460, 360, 180);
+    ctx.fill();
+  }
+
+  async function renderSouvenir() {
+    const originalCanvas = document.createElement("canvas");
+    originalCanvas.width = CANVAS_WIDTH;
+    originalCanvas.height = CANVAS_HEIGHT;
+    const originalCtx = originalCanvas.getContext("2d");
+
+    if (sourceImage) {
+      drawCover(originalCtx, sourceImage);
+    } else if (camera.srcObject) {
+      drawCover(originalCtx, camera, true);
+    } else {
+      drawPlaceholder();
+      originalCtx.drawImage(canvas, 0, 0);
+    }
+
+    beforeImage.src = originalCanvas.toDataURL("image/jpeg", 0.9);
+    renderGift.disabled = true;
+    renderGift.textContent = "Memproses...";
+    try {
+      const caricatureCanvas = await generateCaricature(originalCanvas, checkedValue("style"), loadConfig());
+      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.drawImage(caricatureCanvas, 0, 0);
+      const latestConfig = loadConfig();
+      await drawTwibbon(ctx, latestConfig, guestName.value || "Tamu Undangan");
+      drawTextPlaceholders(ctx, latestConfig, guestName.value || "Tamu Undangan");
+
+      afterImage.src = canvas.toDataURL("image/png");
+      canvas.style.display = "block";
+      camera.style.display = "none";
+      cameraEmpty.style.display = "none";
+      compareCard.hidden = false;
+      setCompare(compareSlider.value);
+
+      canvas.toBlob((blob) => {
+        lastBlob = blob;
+        shareGift.disabled = !blob;
+      }, "image/png");
+    } finally {
+      renderGift.disabled = false;
+      renderGift.innerHTML = '<span class="button-icon">GO</span>Buat Karikatur';
+    }
+  }
+
+  function setCompare(value) {
+    compareAfter.style.clipPath = `inset(0 ${100 - Number(value)}% 0 0)`;
+    compareLine.style.left = `${value}%`;
+  }
+
+  function captureFromVideo() {
+    const image = new Image();
+    drawCover(ctx, camera, true);
+    image.onload = () => {
+      sourceImage = image;
+      renderSouvenir();
+    };
+    image.src = canvas.toDataURL("image/jpeg", 0.92);
+  }
+
+  async function shareSouvenir() {
+    if (!lastBlob) return;
+    const file = new File([lastBlob], "souvenir-karikatur.png", { type: "image/png" });
+
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        title: "Souvenir Karikatur",
+        text: "Terima kasih sudah hadir.",
+        files: [file],
+      });
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(lastBlob);
+    link.download = file.name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  startCamera.addEventListener("click", () => {
+    openCamera().catch(() => {
+      cameraEmpty.style.display = "block";
+      cameraEmpty.innerHTML =
+        "<strong>Kamera tidak bisa dibuka</strong><span>Coba izinkan akses kamera atau unggah foto dari galeri.</span>";
+    });
+  });
+
+  capturePhoto.addEventListener("click", captureFromVideo);
+  renderGift.addEventListener("click", renderSouvenir);
+  shareGift.addEventListener("click", shareSouvenir);
+  compareSlider.addEventListener("input", () => setCompare(compareSlider.value));
+  adminLink.addEventListener("click", openAdminGate);
+  adminLogin.addEventListener("click", submitAdminGate);
+  adminCancel.addEventListener("click", closeAdminGate);
+  adminPassword.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") submitAdminGate();
+    if (event.key === "Escape") closeAdminGate();
+  });
+
+  uploadPhoto.addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const image = new Image();
+    image.onload = () => {
+      sourceImage = image;
+      renderSouvenir();
+    };
+    image.src = URL.createObjectURL(file);
+  });
+
+  guestName.addEventListener("input", () => {
+    if (!compareCard.hidden) renderSouvenir();
+  });
+  document.querySelectorAll("input[name='style']").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (!compareCard.hidden) renderSouvenir();
+    });
+  });
+
+  drawPlaceholder();
+  canvas.style.display = "block";
+}
+
+if (page === "admin") initAdmin();
+if (page === "guest") initGuest();
+if (page === "manager") initManager();

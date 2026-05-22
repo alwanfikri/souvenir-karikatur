@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Souvenir Selfie Pernikahan</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="guest">
+    <main class="app-shell">
+      <section class="studio">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Souvenir digital</p>
+            <h1 id="guestTitle">Selfie atau wefie tamu jadi karikatur</h1>
+          </div>
+          <nav class="page-links" aria-label="Navigasi">
+            <a href="admin.html" id="guestAdminLink">Admin</a>
+          </nav>
+        </header>
+
+        <section class="admin-gate" id="guestAdminGate" hidden>
+          <div class="control-panel login-card">
+            <p class="eyebrow">Akses admin</p>
+            <h2>Masukkan password admin</h2>
+            <div class="field-group">
+              <label for="guestAdminPassword">Password</label>
+              <input id="guestAdminPassword" type="password" autocomplete="current-password" />
+            </div>
+            <div class="gate-actions">
+              <button class="primary-button wide" id="guestAdminLogin" type="button">Masuk Admin</button>
+              <button class="secondary-button wide" id="guestAdminCancel" type="button">Batal</button>
+            </div>
+            <p class="status-text" id="guestAdminStatus"></p>
+          </div>
+        </section>
+
+        <div class="workspace guest-workspace">
+          <section class="camera-panel" aria-label="Area kamera">
+            <div class="preview-frame" id="previewFrame">
+              <video id="camera" autoplay playsinline muted></video>
+              <canvas id="workCanvas" width="1080" height="1350"></canvas>
+              <div class="camera-empty" id="cameraEmpty">
+                <strong>Kamera belum aktif</strong>
+                <span>Izinkan akses kamera, lalu ambil selfie terbaikmu.</span>
+              </div>
+            </div>
+
+            <div class="capture-actions">
+              <button class="secondary-button" id="startCamera" type="button">
+                <span class="button-icon">[ ]</span>
+                Buka Kamera
+              </button>
+              <button class="primary-button" id="capturePhoto" type="button" disabled>
+                <span class="button-icon">REC</span>
+                Ambil Selfie
+              </button>
+              <label class="secondary-button upload-button">
+                <span class="button-icon">UP</span>
+                Unggah Foto
+                <input id="uploadPhoto" type="file" accept="image/*" />
+              </label>
+            </div>
+          </section>
+
+          <aside class="control-panel" aria-label="Kontrol souvenir">
+            <div class="couple-card">
+              <span id="eventDate">22.06.2026</span>
+              <strong id="coupleName">Raka & Dina</strong>
+            </div>
+
+            <div class="field-group">
+              <label for="guestName">Nama tamu</label>
+              <input id="guestName" type="text" value="Nadia & Arif" maxlength="32" />
+            </div>
+
+            <div class="field-group">
+              <span class="label-text">Gaya karikatur</span>
+              <div class="segmented" role="radiogroup" aria-label="Gaya karikatur">
+                <label>
+                  <input type="radio" name="style" value="soft" checked />
+                  <span>Halus</span>
+                </label>
+                <label>
+                  <input type="radio" name="style" value="comic" />
+                  <span>Komik</span>
+                </label>
+                <label>
+                  <input type="radio" name="style" value="sketch" />
+                  <span>Sketsa</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="engine-note">
+              Mode gratis lokal aktif. Nanti bisa diganti ke API karikatur berbayar dari panel admin.
+            </div>
+
+            <div class="compare-card" id="compareCard" hidden>
+              <div class="compare-view" id="compareView">
+                <img id="beforeImage" alt="Foto asli tamu" />
+                <div class="compare-after" id="compareAfter">
+                  <img id="afterImage" alt="Karikatur dengan twibbon" />
+                </div>
+                <div class="compare-line" id="compareLine"></div>
+              </div>
+              <div class="field-group">
+                <label for="compareSlider">Foto asli menjadi karikatur</label>
+                <input id="compareSlider" type="range" min="0" max="100" value="55" />
+              </div>
+            </div>
+
+            <div class="send-panel">
+              <button class="primary-button wide" id="renderGift" type="button">
+                <span class="button-icon">GO</span>
+                Buat Karikatur
+              </button>
+              <button class="secondary-button wide" id="shareGift" type="button" disabled>
+                <span class="button-icon">GO</span>
+                Kirim / Simpan
+              </button>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Manager Souvenir</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="manager">
+    <main class="app-shell">
+      <section class="studio">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Admin manager</p>
+            <h1>Atur password untuk halaman admin</h1>
+          </div>
+          <nav class="page-links" aria-label="Navigasi">
+            <a href="index.html">Halaman Tamu</a>
+            <a href="admin.html">Admin</a>
+          </nav>
+        </header>
+
+        <div class="workspace manager-workspace">
+          <section class="control-panel manager-form" aria-label="Form manager">
+            <div class="info-box">
+              <strong>Proteksi sementara</strong>
+              <span>Password ini disimpan di browser untuk prototipe statis. Versi production perlu login backend agar tidak bisa dibaca dari sisi client.</span>
+            </div>
+
+            <div class="field-group">
+              <label for="managerCurrentPassword">Password manager saat ini</label>
+              <input id="managerCurrentPassword" type="password" autocomplete="current-password" />
+            </div>
+
+            <div class="field-grid">
+              <div class="field-group">
+                <label for="managerNewPassword">Password admin baru</label>
+                <input id="managerNewPassword" type="password" autocomplete="new-password" />
+              </div>
+              <div class="field-group">
+                <label for="managerConfirmPassword">Ulangi password</label>
+                <input id="managerConfirmPassword" type="password" autocomplete="new-password" />
+              </div>
+            </div>
+
+            <div class="send-panel">
+              <button class="primary-button wide" id="saveManagerPassword" type="button">Simpan Password</button>
+              <button class="secondary-button wide" id="clearManagerPassword" type="button">Matikan Password</button>
+            </div>
+
+            <p class="status-text" id="managerStatus"></p>
+          </section>
+
+          <section class="control-panel manager-help" aria-label="Catatan keamanan">
+            <div class="info-box">
+              <strong>Password awal manager</strong>
+              <span>Untuk prototipe ini password awal manager adalah admin123. Setelah masuk, ganti ke password yang kamu mau.</span>
+            </div>
+            <div class="info-box">
+              <strong>Alur nanti</strong>
+              <span>Di production, manager membuat akun admin di database. Halaman admin mengecek sesi login dari server sebelum bisa upload frame atau mengubah event.</span>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
