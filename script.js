@@ -1,4 +1,5 @@
 const CONFIG_KEY = "weddingSouvenirConfig";
+const CLOUD_SETTINGS_KEY = "weddingSouvenirCloudSettings";
 const ADMIN_PASSWORD_KEY = "weddingSouvenirAdminPassword";
 const ADMIN_AUTH_KEY = "weddingSouvenirAdminAuthenticated";
 const MANAGER_PASSWORD_KEY = "weddingSouvenirManagerPassword";
@@ -61,6 +62,12 @@ const defaultConfig = {
       weight: "400",
     },
   },
+};
+
+const defaultCloudSettings = {
+  supabaseUrl: "",
+  supabaseAnonKey: "",
+  eventSlug: "default-event",
 };
 
 const page = document.body.dataset.page;
@@ -141,6 +148,84 @@ function scaleTextSettings(settings, fromFormat, toFormat) {
 
 function saveConfig(config) {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
+
+function loadCloudSettings() {
+  try {
+    return {
+      ...defaultCloudSettings,
+      ...(window.SOUVENIR_CLOUD_CONFIG || {}),
+      ...JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)),
+    };
+  } catch {
+    return { ...defaultCloudSettings, ...(window.SOUVENIR_CLOUD_CONFIG || {}) };
+  }
+}
+
+function saveCloudSettings(settings) {
+  localStorage.setItem(CLOUD_SETTINGS_KEY, JSON.stringify({ ...defaultCloudSettings, ...settings }));
+}
+
+function clearCloudSettings() {
+  localStorage.removeItem(CLOUD_SETTINGS_KEY);
+}
+
+function isCloudConfigured() {
+  const settings = loadCloudSettings();
+  return Boolean(settings.supabaseUrl && settings.supabaseAnonKey && settings.eventSlug);
+}
+
+function getSupabaseHeaders(settings) {
+  return {
+    apikey: settings.supabaseAnonKey,
+    Authorization: `Bearer ${settings.supabaseAnonKey}`,
+    "Content-Type": "application/json",
+  };
+}
+
+function getSupabaseBaseUrl(settings) {
+  return settings.supabaseUrl.replace(/\/$/, "");
+}
+
+async function fetchCloudConfig() {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return null;
+
+  const params = new URLSearchParams({
+    slug: `eq.${settings.eventSlug}`,
+    select: "config",
+    limit: "1",
+  });
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/events?${params}`, {
+    headers: getSupabaseHeaders(settings),
+  });
+  if (!response.ok) throw new Error(`Gagal membaca Supabase: ${response.status}`);
+
+  const rows = await response.json();
+  if (!rows.length) return null;
+  const config = normalizeConfig({ ...defaultConfig, ...rows[0].config });
+  saveConfig(config);
+  return config;
+}
+
+async function saveCloudConfig(config) {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return false;
+
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/events`, {
+    method: "POST",
+    headers: {
+      ...getSupabaseHeaders(settings),
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify({
+      slug: settings.eventSlug,
+      config,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) throw new Error(`Gagal menyimpan Supabase: ${response.status}`);
+  return true;
 }
 
 function getStoredPassword(key, fallback = "") {
@@ -611,8 +696,17 @@ function initAdminForm() {
       text: readTextSettings(),
     };
     saveConfig(nextConfig);
+    try {
+      if (await saveCloudConfig(nextConfig)) {
+        save.textContent = "Tersimpan ke cloud";
+      } else {
+        save.textContent = "Tersimpan lokal";
+      }
+    } catch (error) {
+      console.warn(error);
+      save.textContent = "Tersimpan lokal";
+    }
     await preview();
-    save.textContent = "Tersimpan";
     window.setTimeout(() => {
       save.innerHTML = '<span class="button-icon">OK</span>Simpan Pengaturan';
     }, 1200);
@@ -702,6 +796,14 @@ function initAdminForm() {
 
   syncPlaceholderControls();
   preview();
+  const localBeforeCloud = localStorage.getItem(CONFIG_KEY);
+  fetchCloudConfig()
+    .then((cloudConfig) => {
+      if (cloudConfig && localBeforeCloud !== localStorage.getItem(CONFIG_KEY)) {
+        window.location.reload();
+      }
+    })
+    .catch((error) => console.warn(error));
 }
 
 function initManager() {
@@ -711,6 +813,17 @@ function initManager() {
   const saveButton = document.querySelector("#saveManagerPassword");
   const clearButton = document.querySelector("#clearManagerPassword");
   const status = document.querySelector("#managerStatus");
+  const supabaseUrl = document.querySelector("#supabaseUrl");
+  const supabaseAnonKey = document.querySelector("#supabaseAnonKey");
+  const eventSlug = document.querySelector("#eventSlug");
+  const saveCloud = document.querySelector("#saveCloudSettings");
+  const clearCloud = document.querySelector("#clearCloudSettings");
+  const cloudStatus = document.querySelector("#cloudStatus");
+  const cloudSettings = loadCloudSettings();
+
+  supabaseUrl.value = cloudSettings.supabaseUrl;
+  supabaseAnonKey.value = cloudSettings.supabaseAnonKey;
+  eventSlug.value = cloudSettings.eventSlug;
 
   function isManagerAllowed() {
     return currentPassword.value === getStoredPassword(MANAGER_PASSWORD_KEY, DEFAULT_MANAGER_PASSWORD);
@@ -750,6 +863,30 @@ function initManager() {
     localStorage.setItem(ADMIN_PASSWORD_KEY, PASSWORD_DISABLED);
     sessionStorage.removeItem(ADMIN_AUTH_KEY);
     status.textContent = "Password admin dimatikan untuk browser ini.";
+  });
+
+  saveCloud.addEventListener("click", async () => {
+    saveCloudSettings({
+      supabaseUrl: supabaseUrl.value.trim(),
+      supabaseAnonKey: supabaseAnonKey.value.trim(),
+      eventSlug: eventSlug.value.trim() || defaultCloudSettings.eventSlug,
+    });
+
+    try {
+      await fetchCloudConfig();
+      cloudStatus.textContent = "Cloud sync tersimpan dan koneksi berhasil.";
+    } catch (error) {
+      console.warn(error);
+      cloudStatus.textContent = "Cloud sync tersimpan, tapi koneksi belum berhasil. Cek tabel/policy Supabase.";
+    }
+  });
+
+  clearCloud.addEventListener("click", () => {
+    clearCloudSettings();
+    supabaseUrl.value = "";
+    supabaseAnonKey.value = "";
+    eventSlug.value = defaultCloudSettings.eventSlug;
+    cloudStatus.textContent = "Cloud sync dimatikan. App kembali memakai localStorage.";
   });
 }
 
@@ -974,6 +1111,14 @@ function initGuest() {
 
   drawPlaceholder();
   canvas.style.display = "block";
+  const localBeforeCloud = localStorage.getItem(CONFIG_KEY);
+  fetchCloudConfig()
+    .then((cloudConfig) => {
+      if (cloudConfig && localBeforeCloud !== localStorage.getItem(CONFIG_KEY)) {
+        window.location.reload();
+      }
+    })
+    .catch((error) => console.warn(error));
 }
 
 if (page === "admin") initAdmin();

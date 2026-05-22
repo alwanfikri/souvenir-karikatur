@@ -16,4 +16,6 @@ Web statis untuk souvenir digital acara: tamu mengambil selfie/wefie, hasilnya d
 
 ## Catatan
 
-Saat ini semua berjalan sebagai prototipe statis di browser. Password, twibbon, dan setting event masih disimpan di `localStorage`. Untuk production, pindahkan auth, storage, dan AI processing ke backend.
+Saat ini semua berjalan sebagai prototipe statis di browser. Untuk sinkronisasi lintas device, isi `cloud-config.js` dengan Supabase project URL, anon key, dan event slug, lalu ikuti `SUPABASE_SETUP.md`.
+
+Password admin masih disimpan di browser untuk prototipe. Untuk production, pindahkan auth, storage, dan AI processing ke backend.

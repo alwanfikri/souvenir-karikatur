@@ -53,6 +53,33 @@
 
           <section class="control-panel manager-help" aria-label="Catatan keamanan">
             <div class="info-box">
+              <strong>Cloud sync Supabase</strong>
+              <span>Isi ini agar setting event/twibbon dari admin bisa dipakai lintas device. Kosongkan untuk tetap memakai mode lokal.</span>
+            </div>
+
+            <div class="field-group">
+              <label for="supabaseUrl">Supabase project URL</label>
+              <input id="supabaseUrl" type="text" placeholder="https://xxxx.supabase.co" />
+            </div>
+
+            <div class="field-group">
+              <label for="supabaseAnonKey">Supabase anon key</label>
+              <input id="supabaseAnonKey" type="password" autocomplete="off" />
+            </div>
+
+            <div class="field-group">
+              <label for="eventSlug">Event slug</label>
+              <input id="eventSlug" type="text" value="default-event" />
+            </div>
+
+            <div class="send-panel">
+              <button class="primary-button wide" id="saveCloudSettings" type="button">Simpan Cloud Sync</button>
+              <button class="secondary-button wide" id="clearCloudSettings" type="button">Matikan Cloud Sync</button>
+            </div>
+
+            <p class="status-text" id="cloudStatus"></p>
+
+            <div class="info-box">
               <strong>Password awal manager</strong>
               <span>Untuk prototipe ini password awal manager adalah admin123. Setelah masuk, ganti ke password yang kamu mau.</span>
             </div>
@@ -65,6 +92,7 @@
       </section>
     </main>
 
+    <script src="cloud-config.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
