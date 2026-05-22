@@ -10,8 +10,8 @@ Web statis untuk souvenir digital acara: tamu mengambil selfie/wefie, hasilnya d
 
 ## Ukuran Twibbon
 
-- Canvas final: 1080 x 1350 px.
-- Rasio: 4:5.
+- Story 9:16: 1080 x 1920 px.
+- Portrait 4:5: 1080 x 1350 px.
 - Disarankan upload PNG transparan dengan area tengah kosong untuk foto/karikatur.
 
 ## Catatan

@@ -3,8 +3,22 @@ const ADMIN_PASSWORD_KEY = "weddingSouvenirAdminPassword";
 const ADMIN_AUTH_KEY = "weddingSouvenirAdminAuthenticated";
 const MANAGER_PASSWORD_KEY = "weddingSouvenirManagerPassword";
 const PASSWORD_DISABLED = "__disabled__";
-const CANVAS_WIDTH = 1080;
-const CANVAS_HEIGHT = 1350;
+const OUTPUT_FORMATS = {
+  portrait: {
+    width: 1080,
+    height: 1350,
+    label: "Portrait 4:5",
+    hint: "Buat PNG transparan ukuran 1080 x 1350 px, rasio 4:5. Cocok untuk poster/feed portrait.",
+  },
+  story: {
+    width: 1080,
+    height: 1920,
+    label: "Story 9:16",
+    hint: "Buat PNG transparan ukuran 1080 x 1920 px, rasio 9:16. Cocok untuk Instagram Story.",
+  },
+};
+let CANVAS_WIDTH = OUTPUT_FORMATS.portrait.width;
+let CANVAS_HEIGHT = OUTPUT_FORMATS.portrait.height;
 const DEFAULT_MANAGER_PASSWORD = "admin123";
 
 const defaultConfig = {
@@ -13,6 +27,7 @@ const defaultConfig = {
   date: "22.06.2026",
   title: "Selfie atau wefie tamu jadi karikatur",
   shareCaption: "Terima kasih {tamu} sudah hadir di acara {mempelai}.",
+  outputFormat: "portrait",
   frameFit: "cover",
   aiProvider: "local",
   apiEndpoint: "/api/caricature",
@@ -87,7 +102,41 @@ function normalizeConfig(config) {
       size: Number(legacyText.date?.size || Math.round((legacyText.size || 54) * 0.46) || defaultConfig.text.date.size),
     },
   };
-  return { ...defaultConfig, ...config, text };
+  const outputFormat = OUTPUT_FORMATS[config.outputFormat] ? config.outputFormat : defaultConfig.outputFormat;
+  return { ...defaultConfig, ...config, outputFormat, text };
+}
+
+function getOutputSize(format = defaultConfig.outputFormat) {
+  return OUTPUT_FORMATS[format] || OUTPUT_FORMATS[defaultConfig.outputFormat];
+}
+
+function applyOutputFormat(format, ...canvases) {
+  const size = getOutputSize(format);
+  CANVAS_WIDTH = size.width;
+  CANVAS_HEIGHT = size.height;
+  canvases.filter(Boolean).forEach((canvas) => {
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+    canvas.style.aspectRatio = `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`;
+    if (canvas.parentElement) {
+      canvas.parentElement.style.aspectRatio = `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`;
+    }
+  });
+  document.querySelectorAll(".compare-view").forEach((element) => {
+    element.style.aspectRatio = `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`;
+  });
+  return size;
+}
+
+function scaleTextSettings(settings, fromFormat, toFormat) {
+  const from = getOutputSize(fromFormat);
+  const to = getOutputSize(toFormat);
+  const scaled = structuredClone(settings);
+  Object.keys(scaled).forEach((key) => {
+    scaled[key].x = Math.round((Number(scaled[key].x) / from.width) * to.width);
+    scaled[key].y = Math.round((Number(scaled[key].y) / from.height) * to.height);
+  });
+  return scaled;
 }
 
 function saveConfig(config) {
@@ -446,6 +495,7 @@ function initAdminForm() {
   const title = document.querySelector("#adminTitle");
   const shareCaption = document.querySelector("#shareCaption");
   const apiEndpoint = document.querySelector("#apiEndpoint");
+  const frameSizeHint = document.querySelector("#frameSizeHint");
   const placeholderTemplate = document.querySelector("#placeholderTemplate");
   const placeholderSize = document.querySelector("#placeholderSize");
   const placeholderColor = document.querySelector("#placeholderColor");
@@ -459,6 +509,8 @@ function initAdminForm() {
   const reset = document.querySelector("#resetAdmin");
   const canvas = document.querySelector("#adminPreviewCanvas");
   const ctx = canvas.getContext("2d");
+  let activeFormat = config.outputFormat;
+  applyOutputFormat(activeFormat, canvas);
 
   bride.value = config.bride;
   groom.value = config.groom;
@@ -483,6 +535,8 @@ function initAdminForm() {
 
   document.querySelector(`input[name="frameFit"][value="${config.frameFit}"]`).checked = true;
   document.querySelector(`input[name="aiProvider"][value="${config.aiProvider}"]`).checked = true;
+  document.querySelector(`input[name="outputFormat"][value="${activeFormat}"]`).checked = true;
+  updateFormatUi();
 
   async function preview() {
     const nextConfig = {
@@ -492,6 +546,7 @@ function initAdminForm() {
       date: date.value || defaultConfig.date,
       title: title.value || defaultConfig.title,
       shareCaption: shareCaption.value || defaultConfig.shareCaption,
+      outputFormat: activeFormat,
       frameFit: checkedValue("frameFit"),
       aiProvider: checkedValue("aiProvider"),
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
@@ -521,6 +576,13 @@ function initAdminForm() {
     return structuredClone(textSettings);
   }
 
+  function updateFormatUi() {
+    const size = applyOutputFormat(activeFormat, canvas);
+    frameSizeHint.textContent = getOutputSize(activeFormat).hint;
+    placeholderX.max = size.width;
+    placeholderY.max = size.height;
+  }
+
   function writeActivePlaceholder() {
     textSettings[activePlaceholder] = {
       template: placeholderTemplate.value || defaultConfig.text[activePlaceholder].template,
@@ -542,6 +604,7 @@ function initAdminForm() {
       date: date.value || defaultConfig.date,
       title: title.value || defaultConfig.title,
       shareCaption: shareCaption.value || defaultConfig.shareCaption,
+      outputFormat: activeFormat,
       frameFit: checkedValue("frameFit"),
       aiProvider: checkedValue("aiProvider"),
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
@@ -588,6 +651,17 @@ function initAdminForm() {
   document.querySelectorAll("input[name='activePlaceholder']").forEach((input) => {
     input.addEventListener("change", () => {
       activePlaceholder = checkedValue("activePlaceholder");
+      syncPlaceholderControls();
+      preview();
+    });
+  });
+  document.querySelectorAll("input[name='outputFormat']").forEach((input) => {
+    input.addEventListener("change", () => {
+      const nextFormat = checkedValue("outputFormat");
+      if (nextFormat === activeFormat) return;
+      textSettings = scaleTextSettings(textSettings, activeFormat, nextFormat);
+      activeFormat = nextFormat;
+      updateFormatUi();
       syncPlaceholderControls();
       preview();
     });
@@ -683,6 +757,7 @@ function initGuest() {
   const config = loadConfig();
   const camera = document.querySelector("#camera");
   const canvas = document.querySelector("#workCanvas");
+  applyOutputFormat(config.outputFormat, canvas);
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const cameraEmpty = document.querySelector("#cameraEmpty");
   const startCamera = document.querySelector("#startCamera");
@@ -765,6 +840,7 @@ function initGuest() {
   }
 
   async function renderSouvenir() {
+    applyOutputFormat(loadConfig().outputFormat, canvas);
     const originalCanvas = document.createElement("canvas");
     originalCanvas.width = CANVAS_WIDTH;
     originalCanvas.height = CANVAS_HEIGHT;

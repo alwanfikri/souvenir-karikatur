@@ -3,9 +3,9 @@
 Mode sekarang memakai engine gratis lokal di browser (`aiProvider: "local"`). Untuk pindah ke AI berbayar, isi `Endpoint API karikatur` di `admin.html`, lalu pilih `API nanti`.
 
 Ukuran output dan twibbon:
-- Canvas final: 1080 x 1350 px.
-- Rasio: 4:5.
-- Frame/twibbon disarankan PNG transparan 1080 x 1350 px.
+- Story 9:16: 1080 x 1920 px.
+- Portrait 4:5: 1080 x 1350 px.
+- Frame/twibbon disarankan PNG transparan sesuai format aktif.
 - Area tengah frame sebaiknya transparan karena akan dipakai untuk foto/karikatur selfie atau wefie.
 - Kalau frame dibuat lebih besar seperti 1122 x 1402 px, rasionya masih dekat 4:5 dan bisa dipakai. Web akan menyesuaikan dengan mode `Cover` atau `Contain`.
 - Teks nama mempelai, tanggal, dan nama tamu dioverlay oleh web setelah twibbon, memakai token `{mempelai}`, `{tanggal}`, dan `{tamu}` dari panel admin.

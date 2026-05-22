@@ -37,7 +37,21 @@
           <section class="control-panel admin-form" aria-label="Form admin">
             <div class="info-box">
               <strong>Ukuran frame/twibbon</strong>
-              <span>Buat PNG transparan ukuran 1080 x 1350 px, rasio 4:5. Area tengah sebaiknya transparan untuk foto/karikatur.</span>
+              <span id="frameSizeHint">Buat PNG transparan ukuran 1080 x 1350 px, rasio 4:5. Area tengah sebaiknya transparan untuk foto/karikatur.</span>
+            </div>
+
+            <div class="field-group">
+              <span class="label-text">Format output</span>
+              <div class="segmented" role="radiogroup" aria-label="Format output">
+                <label>
+                  <input type="radio" name="outputFormat" value="story" />
+                  <span>Story 9:16</span>
+                </label>
+                <label>
+                  <input type="radio" name="outputFormat" value="portrait" checked />
+                  <span>Portrait 4:5</span>
+                </label>
+              </div>
             </div>
 
             <div class="field-grid">
