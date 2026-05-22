@@ -5,7 +5,7 @@ Web statis untuk souvenir digital acara: tamu mengambil selfie/wefie, hasilnya d
 ## Halaman
 
 - `index.html` - halaman tamu untuk selfie/wefie dan menyimpan hasil.
-- `admin.html` - panel admin untuk mengatur event, upload twibbon, engine karikatur, dan placeholder teks interaktif.
+- `admin.html` - panel admin untuk mengatur event, caption share, upload twibbon, engine karikatur, dan placeholder teks interaktif.
 - `manager.html` - panel manager untuk mengatur password admin prototipe.
 
 ## Ukuran Twibbon

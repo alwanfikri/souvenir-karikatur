@@ -12,6 +12,7 @@ const defaultConfig = {
   groom: "Dina",
   date: "22.06.2026",
   title: "Selfie atau wefie tamu jadi karikatur",
+  shareCaption: "Terima kasih {tamu} sudah hadir di acara {mempelai}.",
   frameFit: "cover",
   aiProvider: "local",
   apiEndpoint: "/api/caricature",
@@ -443,6 +444,7 @@ function initAdminForm() {
   const groom = document.querySelector("#adminGroom");
   const date = document.querySelector("#adminDate");
   const title = document.querySelector("#adminTitle");
+  const shareCaption = document.querySelector("#shareCaption");
   const apiEndpoint = document.querySelector("#apiEndpoint");
   const placeholderTemplate = document.querySelector("#placeholderTemplate");
   const placeholderSize = document.querySelector("#placeholderSize");
@@ -462,6 +464,7 @@ function initAdminForm() {
   groom.value = config.groom;
   date.value = config.date;
   title.value = config.title;
+  shareCaption.value = config.shareCaption;
   apiEndpoint.value = config.apiEndpoint;
   let activePlaceholder = checkedValue("activePlaceholder") || "couple";
   let textSettings = structuredClone(config.text);
@@ -488,6 +491,7 @@ function initAdminForm() {
       groom: groom.value || defaultConfig.groom,
       date: date.value || defaultConfig.date,
       title: title.value || defaultConfig.title,
+      shareCaption: shareCaption.value || defaultConfig.shareCaption,
       frameFit: checkedValue("frameFit"),
       aiProvider: checkedValue("aiProvider"),
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
@@ -537,6 +541,7 @@ function initAdminForm() {
       groom: groom.value || defaultConfig.groom,
       date: date.value || defaultConfig.date,
       title: title.value || defaultConfig.title,
+      shareCaption: shareCaption.value || defaultConfig.shareCaption,
       frameFit: checkedValue("frameFit"),
       aiProvider: checkedValue("aiProvider"),
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
@@ -563,6 +568,7 @@ function initAdminForm() {
     groom,
     date,
     title,
+    shareCaption,
     apiEndpoint,
   ].forEach((input) => input.addEventListener("input", preview));
   [
@@ -817,12 +823,18 @@ function initGuest() {
 
   async function shareSouvenir() {
     if (!lastBlob) return;
+    const latestConfig = loadConfig();
+    const caption = fillTemplate(
+      latestConfig.shareCaption || defaultConfig.shareCaption,
+      latestConfig,
+      guestName.value || "Tamu Undangan"
+    );
     const file = new File([lastBlob], "souvenir-karikatur.png", { type: "image/png" });
 
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         title: "Souvenir Karikatur",
-        text: "Terima kasih sudah hadir.",
+        text: caption,
         files: [file],
       });
       return;

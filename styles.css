@@ -32,7 +32,9 @@ body {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -214,6 +216,12 @@ canvas {
   gap: 7px;
 }
 
+.field-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .text-settings {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -254,6 +262,18 @@ input[type="text"] {
   outline: none;
 }
 
+textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 13px;
+  color: var(--ink);
+  background: var(--paper);
+  outline: none;
+  resize: vertical;
+}
+
 input[type="password"] {
   width: 100%;
   min-height: 46px;
@@ -283,6 +303,7 @@ input[type="color"] {
 
 input[type="text"]:focus,
 input[type="password"]:focus,
+textarea:focus,
 select:focus,
 input[type="range"]:focus {
   border-color: var(--sage);
