@@ -1,6 +1,6 @@
 # Souvenir Karikatur
 
-Web statis untuk souvenir digital acara: tamu mengambil selfie/wefie, hasilnya diproses menjadi karikatur lokal, lalu dioverlay dengan twibbon/frame yang diatur admin.
+Web statis untuk souvenir digital acara: tamu mengambil selfie/wefie, hasilnya diproses menjadi karikatur lokal, lalu dioverlay dengan twibbon/frame yang diatur admin. Hasil akhir bisa disimpan atau dikirim dari tombol terpisah.
 
 ## Halaman
 

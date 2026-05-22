@@ -689,6 +689,7 @@ function initGuest() {
   const capturePhoto = document.querySelector("#capturePhoto");
   const uploadPhoto = document.querySelector("#uploadPhoto");
   const renderGift = document.querySelector("#renderGift");
+  const saveGift = document.querySelector("#saveGift");
   const shareGift = document.querySelector("#shareGift");
   const guestName = document.querySelector("#guestName");
   const beforeImage = document.querySelector("#beforeImage");
@@ -798,6 +799,7 @@ function initGuest() {
 
       canvas.toBlob((blob) => {
         lastBlob = blob;
+        saveGift.disabled = !blob;
         shareGift.disabled = !blob;
       }, "image/png");
     } finally {
@@ -840,9 +842,14 @@ function initGuest() {
       return;
     }
 
+    downloadSouvenir();
+  }
+
+  function downloadSouvenir() {
+    if (!lastBlob) return;
     const link = document.createElement("a");
     link.href = URL.createObjectURL(lastBlob);
-    link.download = file.name;
+    link.download = "souvenir-karikatur.png";
     link.click();
     URL.revokeObjectURL(link.href);
   }
@@ -857,6 +864,7 @@ function initGuest() {
 
   capturePhoto.addEventListener("click", captureFromVideo);
   renderGift.addEventListener("click", renderSouvenir);
+  saveGift.addEventListener("click", downloadSouvenir);
   shareGift.addEventListener("click", shareSouvenir);
   compareSlider.addEventListener("input", () => setCompare(compareSlider.value));
   adminLink.addEventListener("click", openAdminGate);

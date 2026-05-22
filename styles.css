@@ -205,6 +205,12 @@ canvas {
   padding-top: 10px;
 }
 
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
