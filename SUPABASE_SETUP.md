@@ -40,7 +40,7 @@ with check (true);
 
 ## 3. Isi Manager
 
-Buka `cloud-config.js`, lalu isi:
+Buka `app-config.js`, lalu isi:
 
 ```js
 window.SOUVENIR_CLOUD_CONFIG = {
