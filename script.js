@@ -151,15 +151,26 @@ function saveConfig(config) {
 }
 
 function loadCloudSettings() {
+  const publicConfig = window.SOUVENIR_CLOUD_CONFIG || {};
   try {
-    return {
+    const storedConfig = JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)) || {};
+    return compactCloudSettings({
       ...defaultCloudSettings,
-      ...(window.SOUVENIR_CLOUD_CONFIG || {}),
-      ...JSON.parse(localStorage.getItem(CLOUD_SETTINGS_KEY)),
-    };
+      ...publicConfig,
+      ...storedConfig,
+    });
   } catch {
-    return { ...defaultCloudSettings, ...(window.SOUVENIR_CLOUD_CONFIG || {}) };
+    return compactCloudSettings({ ...defaultCloudSettings, ...publicConfig });
   }
+}
+
+function compactCloudSettings(settings) {
+  const publicConfig = window.SOUVENIR_CLOUD_CONFIG || {};
+  return {
+    supabaseUrl: settings.supabaseUrl || publicConfig.supabaseUrl || "",
+    supabaseAnonKey: settings.supabaseAnonKey || publicConfig.supabaseAnonKey || "",
+    eventSlug: settings.eventSlug || publicConfig.eventSlug || defaultCloudSettings.eventSlug,
+  };
 }
 
 function saveCloudSettings(settings) {
@@ -700,11 +711,11 @@ function initAdminForm() {
       if (await saveCloudConfig(nextConfig)) {
         save.textContent = "Tersimpan ke cloud";
       } else {
-        save.textContent = "Tersimpan lokal";
+        save.textContent = "Cloud belum dikonfigurasi";
       }
     } catch (error) {
       console.warn(error);
-      save.textContent = "Tersimpan lokal";
+      save.textContent = "Cloud gagal, tersimpan lokal";
     }
     await preview();
     window.setTimeout(() => {
@@ -883,10 +894,11 @@ function initManager() {
 
   clearCloud.addEventListener("click", () => {
     clearCloudSettings();
-    supabaseUrl.value = "";
-    supabaseAnonKey.value = "";
-    eventSlug.value = defaultCloudSettings.eventSlug;
-    cloudStatus.textContent = "Cloud sync dimatikan. App kembali memakai localStorage.";
+    const publicConfig = window.SOUVENIR_CLOUD_CONFIG || defaultCloudSettings;
+    supabaseUrl.value = publicConfig.supabaseUrl || "";
+    supabaseAnonKey.value = publicConfig.supabaseAnonKey || "";
+    eventSlug.value = publicConfig.eventSlug || defaultCloudSettings.eventSlug;
+    cloudStatus.textContent = "Override lokal dibersihkan. App kembali memakai cloud-config.js.";
   });
 }
 
