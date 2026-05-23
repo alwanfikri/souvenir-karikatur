@@ -37,6 +37,27 @@
 
         <div class="workspace guest-workspace">
           <section class="camera-panel" aria-label="Area kamera">
+            <div class="guest-step">
+              <span>1</span>
+              <div>
+                <strong>Isi nama dulu</strong>
+                <p>Nama ini akan masuk ke souvenir dan caption kirim.</p>
+              </div>
+            </div>
+
+            <div class="field-group guest-name-panel">
+              <label for="guestName">Nama tamu</label>
+              <input id="guestName" type="text" value="" placeholder="Contoh: Nadia & Arif" maxlength="32" />
+            </div>
+
+            <div class="guest-step">
+              <span>2</span>
+              <div>
+                <strong>Ambil selfie atau wefie</strong>
+                <p>Pakai kamera bawaan HP untuk framing yang lebih natural.</p>
+              </div>
+            </div>
+
             <div class="preview-frame" id="previewFrame">
               <video id="camera" autoplay playsinline muted></video>
               <canvas id="workCanvas" width="1080" height="1350"></canvas>
@@ -47,9 +68,19 @@
             </div>
 
             <div class="capture-actions">
+              <label class="primary-button upload-button">
+                <span class="button-icon">CAM</span>
+                Kamera HP
+                <input id="deviceCameraPhoto" type="file" accept="image/*" capture="user" />
+              </label>
+              <label class="secondary-button upload-button">
+                <span class="button-icon">UP</span>
+                Galeri
+                <input id="uploadPhoto" type="file" accept="image/*" />
+              </label>
               <button class="secondary-button" id="startCamera" type="button">
                 <span class="button-icon">[ ]</span>
-                Buka Kamera
+                Kamera Live
               </button>
               <button class="secondary-button" id="switchCamera" type="button" disabled>
                 <span class="button-icon">SW</span>
@@ -59,11 +90,6 @@
                 <span class="button-icon">REC</span>
                 Ambil Selfie
               </button>
-              <label class="secondary-button upload-button">
-                <span class="button-icon">UP</span>
-                Unggah Foto
-                <input id="uploadPhoto" type="file" accept="image/*" />
-              </label>
             </div>
 
             <div class="camera-facing" role="radiogroup" aria-label="Pilihan kamera">
@@ -87,11 +113,6 @@
             <div class="couple-card">
               <span id="eventDate">22.06.2026</span>
               <strong id="coupleName">Raka & Dina</strong>
-            </div>
-
-            <div class="field-group">
-              <label for="guestName">Nama tamu</label>
-              <input id="guestName" type="text" value="Nadia & Arif" maxlength="32" />
             </div>
 
             <div class="field-group">

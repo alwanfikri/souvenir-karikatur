@@ -1045,6 +1045,7 @@ function initGuest() {
   const cameraZoom = document.querySelector("#cameraZoom");
   const capturePhoto = document.querySelector("#capturePhoto");
   const uploadPhoto = document.querySelector("#uploadPhoto");
+  const deviceCameraPhoto = document.querySelector("#deviceCameraPhoto");
   const renderGift = document.querySelector("#renderGift");
   const saveGift = document.querySelector("#saveGift");
   const shareGift = document.querySelector("#shareGift");
@@ -1163,6 +1164,14 @@ function initGuest() {
   }
 
   async function renderSouvenir() {
+    if (!guestName.value.trim()) {
+      guestName.focus();
+      cameraEmpty.style.display = "block";
+      cameraEmpty.innerHTML =
+        "<strong>Isi nama dulu</strong><span>Nama tamu akan dipakai di souvenir dan caption kirim.</span>";
+      return;
+    }
+
     applyOutputFormat(loadConfig().outputFormat, canvas);
     const originalCanvas = document.createElement("canvas");
     originalCanvas.width = CANVAS_WIDTH;
@@ -1301,6 +1310,18 @@ function initGuest() {
   });
 
   uploadPhoto.addEventListener("change", (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const image = new Image();
+    image.onload = () => {
+      sourceImage = image;
+      renderSouvenir();
+    };
+    image.src = URL.createObjectURL(file);
+  });
+
+  deviceCameraPhoto.addEventListener("change", (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 

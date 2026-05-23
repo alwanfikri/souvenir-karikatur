@@ -107,6 +107,10 @@ h1 {
   grid-template-columns: 430px minmax(0, 1fr);
 }
 
+.guest-workspace {
+  grid-template-columns: minmax(0, 0.92fr) 390px;
+}
+
 .camera-panel,
 .control-panel {
   border: 1px solid rgba(85, 73, 58, 0.16);
@@ -120,6 +124,51 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.guest-workspace .preview-frame {
+  min-height: 420px;
+  max-height: 68vh;
+}
+
+.guest-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--paper);
+}
+
+.guest-step span {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fffaf2;
+  background: var(--ink);
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.guest-step strong,
+.guest-step p {
+  display: block;
+  margin: 0;
+}
+
+.guest-step p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.guest-name-panel input {
+  min-height: 54px;
+  font-size: 1.1rem;
 }
 
 .control-panel {
@@ -597,7 +646,8 @@ input[type="range"] {
 
 @media (max-width: 980px) {
   .workspace,
-  .admin-workspace {
+  .admin-workspace,
+  .guest-workspace {
     grid-template-columns: 1fr;
   }
 
