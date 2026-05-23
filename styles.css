@@ -231,6 +231,13 @@ canvas {
   box-shadow: inset 0 0 0 1px var(--ink);
 }
 
+.camera-zoom {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--paper);
+}
+
 .send-panel {
   grid-template-columns: 1fr;
   margin-top: auto;

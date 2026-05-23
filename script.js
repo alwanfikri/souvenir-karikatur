@@ -315,10 +315,10 @@ function loadImage(src) {
   });
 }
 
-function drawCover(ctx, source, mirror = false) {
+function drawCover(ctx, source, mirror = false, zoom = 1) {
   const sourceWidth = source.videoWidth || source.width;
   const sourceHeight = source.videoHeight || source.height;
-  const ratio = Math.max(CANVAS_WIDTH / sourceWidth, CANVAS_HEIGHT / sourceHeight);
+  const ratio = Math.max(CANVAS_WIDTH / sourceWidth, CANVAS_HEIGHT / sourceHeight) * zoom;
   const width = sourceWidth * ratio;
   const height = sourceHeight * ratio;
   const x = (CANVAS_WIDTH - width) / 2;
@@ -1042,6 +1042,7 @@ function initGuest() {
   const cameraEmpty = document.querySelector("#cameraEmpty");
   const startCamera = document.querySelector("#startCamera");
   const switchCamera = document.querySelector("#switchCamera");
+  const cameraZoom = document.querySelector("#cameraZoom");
   const capturePhoto = document.querySelector("#capturePhoto");
   const uploadPhoto = document.querySelector("#uploadPhoto");
   const renderGift = document.querySelector("#renderGift");
@@ -1065,6 +1066,8 @@ function initGuest() {
   let lastBlob = null;
   let stream = null;
   let currentFacing = checkedValue("cameraFacing") || "user";
+  let currentZoom = Number(cameraZoom.value) || 1;
+  let zoomCapabilities = null;
 
   document.querySelector("#guestTitle").textContent = config.title;
   document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
@@ -1104,11 +1107,43 @@ function initGuest() {
       audio: false,
     });
     camera.srcObject = stream;
+    await configureCameraZoom();
     camera.style.display = "block";
     canvas.style.display = "none";
     cameraEmpty.style.display = "none";
     capturePhoto.disabled = false;
     switchCamera.disabled = false;
+  }
+
+  async function configureCameraZoom() {
+    const [track] = stream?.getVideoTracks() || [];
+    zoomCapabilities = track?.getCapabilities?.().zoom ? track.getCapabilities().zoom : null;
+
+    if (zoomCapabilities) {
+      cameraZoom.min = zoomCapabilities.min || 1;
+      cameraZoom.max = Math.min(zoomCapabilities.max || 2, 4);
+      cameraZoom.step = zoomCapabilities.step || 0.1;
+      currentZoom = Math.max(Number(cameraZoom.min), Math.min(Number(cameraZoom.value), Number(cameraZoom.max)));
+      cameraZoom.value = currentZoom;
+      await applyCameraZoom();
+    } else {
+      cameraZoom.min = 1;
+      cameraZoom.max = 2;
+      cameraZoom.step = 0.05;
+      currentZoom = Number(cameraZoom.value) || 1;
+    }
+  }
+
+  async function applyCameraZoom() {
+    currentZoom = Number(cameraZoom.value) || 1;
+    const [track] = stream?.getVideoTracks() || [];
+    if (zoomCapabilities && track?.applyConstraints) {
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: currentZoom }] });
+      } catch (error) {
+        console.warn("Hardware zoom failed, using digital zoom.", error);
+      }
+    }
   }
 
   function drawPlaceholder() {
@@ -1135,9 +1170,9 @@ function initGuest() {
     const originalCtx = originalCanvas.getContext("2d");
 
     if (sourceImage) {
-      drawCover(originalCtx, sourceImage);
+      drawCover(originalCtx, sourceImage, false, currentZoom);
     } else if (camera.srcObject) {
-      drawCover(originalCtx, camera, currentFacing === "user");
+      drawCover(originalCtx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom);
     } else {
       drawPlaceholder();
       originalCtx.drawImage(canvas, 0, 0);
@@ -1179,7 +1214,7 @@ function initGuest() {
 
   function captureFromVideo() {
     const image = new Image();
-    drawCover(ctx, camera, currentFacing === "user");
+    drawCover(ctx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom);
     image.onload = () => {
       sourceImage = image;
       renderSouvenir();
@@ -1235,6 +1270,9 @@ function initGuest() {
       cameraEmpty.innerHTML =
         "<strong>Kamera tidak bisa diganti</strong><span>Device/browser ini mungkin hanya menyediakan satu kamera.</span>";
     });
+  });
+  cameraZoom.addEventListener("input", () => {
+    applyCameraZoom();
   });
   document.querySelectorAll("input[name='cameraFacing']").forEach((input) => {
     input.addEventListener("change", () => {
