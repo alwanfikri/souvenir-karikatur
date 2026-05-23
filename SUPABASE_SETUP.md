@@ -12,6 +12,17 @@ create table if not exists public.events (
   config jsonb not null,
   updated_at timestamptz not null default now()
 );
+
+create table if not exists public.twibbon_concepts (
+  id uuid primary key default gen_random_uuid(),
+  event_slug text not null,
+  name text not null,
+  image_data text not null,
+  output_format text not null default 'portrait',
+  frame_fit text not null default 'cover',
+  updated_at timestamptz not null default now(),
+  unique (event_slug, name)
+);
 ```
 
 ## 2. Aktifkan RLS
@@ -20,6 +31,15 @@ Untuk demo cepat, policy berikut mengizinkan browser membaca dan menulis event d
 
 ```sql
 alter table public.events enable row level security;
+alter table public.twibbon_concepts enable row level security;
+
+drop policy if exists "events_select_public" on public.events;
+drop policy if exists "events_insert_public" on public.events;
+drop policy if exists "events_update_public" on public.events;
+
+drop policy if exists "twibbon_concepts_select_public" on public.twibbon_concepts;
+drop policy if exists "twibbon_concepts_insert_public" on public.twibbon_concepts;
+drop policy if exists "twibbon_concepts_update_public" on public.twibbon_concepts;
 
 create policy "events_select_public"
 on public.events
@@ -33,6 +53,22 @@ with check (true);
 
 create policy "events_update_public"
 on public.events
+for update
+using (true)
+with check (true);
+
+create policy "twibbon_concepts_select_public"
+on public.twibbon_concepts
+for select
+using (true);
+
+create policy "twibbon_concepts_insert_public"
+on public.twibbon_concepts
+for insert
+with check (true);
+
+create policy "twibbon_concepts_update_public"
+on public.twibbon_concepts
 for update
 using (true)
 with check (true);

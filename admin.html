@@ -162,6 +162,29 @@
               </label>
             </div>
 
+            <div class="text-settings">
+              <div class="info-box">
+                <strong>Konsep twibbon</strong>
+                <span>Simpan frame/twibbon ke Supabase agar bisa dipilih lagi dari device lain.</span>
+              </div>
+              <div class="field-group">
+                <label for="twibbonConceptName">Nama konsep</label>
+                <input id="twibbonConceptName" type="text" placeholder="Contoh: Pink floral story" maxlength="48" />
+              </div>
+              <div class="field-group">
+                <label for="twibbonConceptList">Pilih konsep tersimpan</label>
+                <select id="twibbonConceptList">
+                  <option value="">Belum ada konsep</option>
+                </select>
+              </div>
+              <div class="action-grid">
+                <button class="secondary-button wide" id="saveTwibbonConcept" type="button">Simpan Konsep</button>
+                <button class="secondary-button wide" id="applyTwibbonConcept" type="button">Pakai Konsep</button>
+              </div>
+              <button class="secondary-button wide" id="refreshTwibbonConcepts" type="button">Refresh Konsep</button>
+              <p class="status-text" id="twibbonConceptStatus"></p>
+            </div>
+
             <div class="field-group">
               <span class="label-text">Posisi frame</span>
               <div class="segmented" role="radiogroup" aria-label="Fit twibbon">

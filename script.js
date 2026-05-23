@@ -239,6 +239,45 @@ async function saveCloudConfig(config) {
   return true;
 }
 
+async function fetchTwibbonConcepts() {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return [];
+
+  const params = new URLSearchParams({
+    event_slug: `eq.${settings.eventSlug}`,
+    select: "id,name,image_data,output_format,frame_fit,updated_at",
+    order: "updated_at.desc",
+  });
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/twibbon_concepts?${params}`, {
+    headers: getSupabaseHeaders(settings),
+  });
+  if (!response.ok) throw new Error(`Gagal membaca konsep twibbon: ${response.status}`);
+  return response.json();
+}
+
+async function saveTwibbonConceptToCloud(concept) {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return false;
+
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/twibbon_concepts`, {
+    method: "POST",
+    headers: {
+      ...getSupabaseHeaders(settings),
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify({
+      event_slug: settings.eventSlug,
+      name: concept.name,
+      image_data: concept.imageData,
+      output_format: concept.outputFormat,
+      frame_fit: concept.frameFit,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) throw new Error(`Gagal menyimpan konsep twibbon: ${response.status}`);
+  return true;
+}
+
 function getStoredPassword(key, fallback = "") {
   return localStorage.getItem(key) || fallback;
 }
@@ -601,6 +640,12 @@ function initAdminForm() {
   const placeholderY = document.querySelector("#placeholderY");
   const centerPlaceholder = document.querySelector("#centerPlaceholder");
   const upload = document.querySelector("#twibbonUpload");
+  const conceptName = document.querySelector("#twibbonConceptName");
+  const conceptList = document.querySelector("#twibbonConceptList");
+  const saveConcept = document.querySelector("#saveTwibbonConcept");
+  const applyConcept = document.querySelector("#applyTwibbonConcept");
+  const refreshConcepts = document.querySelector("#refreshTwibbonConcepts");
+  const conceptStatus = document.querySelector("#twibbonConceptStatus");
   const save = document.querySelector("#saveAdmin");
   const reset = document.querySelector("#resetAdmin");
   const canvas = document.querySelector("#adminPreviewCanvas");
@@ -617,6 +662,8 @@ function initAdminForm() {
   let activePlaceholder = checkedValue("activePlaceholder") || "couple";
   let textSettings = structuredClone(config.text);
   let isDragging = false;
+  let currentTwibbon = config.twibbon || "";
+  let twibbonConcepts = [];
 
   function syncPlaceholderControls() {
     const item = textSettings[activePlaceholder];
@@ -646,6 +693,7 @@ function initAdminForm() {
       frameFit: checkedValue("frameFit"),
       aiProvider: checkedValue("aiProvider"),
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
+      twibbon: currentTwibbon,
       text: readTextSettings(),
     };
 
@@ -704,6 +752,7 @@ function initAdminForm() {
       frameFit: checkedValue("frameFit"),
       aiProvider: checkedValue("aiProvider"),
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
+      twibbon: currentTwibbon,
       text: readTextSettings(),
     };
     saveConfig(nextConfig);
@@ -726,10 +775,91 @@ function initAdminForm() {
   upload.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const nextConfig = { ...loadConfig(), twibbon: await fileToDataUrl(file) };
+    currentTwibbon = await fileToDataUrl(file);
+    const nextConfig = { ...loadConfig(), twibbon: currentTwibbon };
     saveConfig(nextConfig);
     await preview();
   });
+
+  async function refreshTwibbonConceptList() {
+    conceptStatus.textContent = "Memuat konsep...";
+    try {
+      twibbonConcepts = await fetchTwibbonConcepts();
+      conceptList.innerHTML = "";
+      if (!twibbonConcepts.length) {
+        conceptList.innerHTML = '<option value="">Belum ada konsep</option>';
+        conceptStatus.textContent = isCloudConfigured()
+          ? "Belum ada konsep twibbon tersimpan."
+          : "Cloud belum dikonfigurasi.";
+        return;
+      }
+
+      twibbonConcepts.forEach((concept) => {
+        const option = document.createElement("option");
+        option.value = concept.id;
+        option.textContent = `${concept.name} (${concept.output_format})`;
+        conceptList.append(option);
+      });
+      conceptStatus.textContent = `${twibbonConcepts.length} konsep tersedia.`;
+    } catch (error) {
+      console.warn(error);
+      conceptStatus.textContent = "Gagal memuat konsep. Cek table twibbon_concepts dan policy Supabase.";
+    }
+  }
+
+  saveConcept.addEventListener("click", async () => {
+    if (!currentTwibbon) {
+      conceptStatus.textContent = "Upload twibbon dulu sebelum menyimpan konsep.";
+      return;
+    }
+
+    const name = conceptName.value.trim();
+    if (!name) {
+      conceptStatus.textContent = "Isi nama konsep dulu.";
+      return;
+    }
+
+    conceptStatus.textContent = "Menyimpan konsep...";
+    try {
+      await saveTwibbonConceptToCloud({
+        name,
+        imageData: currentTwibbon,
+        outputFormat: activeFormat,
+        frameFit: checkedValue("frameFit"),
+      });
+      conceptStatus.textContent = "Konsep tersimpan ke cloud.";
+      await refreshTwibbonConceptList();
+    } catch (error) {
+      console.warn(error);
+      conceptStatus.textContent = "Gagal menyimpan konsep. Cek table/policy Supabase.";
+    }
+  });
+
+  applyConcept.addEventListener("click", async () => {
+    const selected = twibbonConcepts.find((concept) => concept.id === conceptList.value);
+    if (!selected) {
+      conceptStatus.textContent = "Pilih konsep dulu.";
+      return;
+    }
+
+    currentTwibbon = selected.image_data;
+    if (OUTPUT_FORMATS[selected.output_format] && selected.output_format !== activeFormat) {
+      textSettings = scaleTextSettings(textSettings, activeFormat, selected.output_format);
+      activeFormat = selected.output_format;
+      document.querySelector(`input[name="outputFormat"][value="${activeFormat}"]`).checked = true;
+      updateFormatUi();
+    }
+    if (selected.frame_fit) {
+      document.querySelector(`input[name="frameFit"][value="${selected.frame_fit}"]`).checked = true;
+    }
+    conceptName.value = selected.name;
+    saveConfig({ ...loadConfig(), twibbon: currentTwibbon, outputFormat: activeFormat, frameFit: checkedValue("frameFit") });
+    syncPlaceholderControls();
+    await preview();
+    conceptStatus.textContent = "Konsep dipakai di preview. Klik Simpan Pengaturan untuk publish ke event.";
+  });
+
+  refreshConcepts.addEventListener("click", refreshTwibbonConceptList);
 
   [
     bride,
@@ -815,6 +945,7 @@ function initAdminForm() {
       }
     })
     .catch((error) => console.warn(error));
+  refreshTwibbonConceptList();
 }
 
 function initManager() {
@@ -910,6 +1041,7 @@ function initGuest() {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const cameraEmpty = document.querySelector("#cameraEmpty");
   const startCamera = document.querySelector("#startCamera");
+  const switchCamera = document.querySelector("#switchCamera");
   const capturePhoto = document.querySelector("#capturePhoto");
   const uploadPhoto = document.querySelector("#uploadPhoto");
   const renderGift = document.querySelector("#renderGift");
@@ -931,6 +1063,8 @@ function initGuest() {
 
   let sourceImage = null;
   let lastBlob = null;
+  let stream = null;
+  let currentFacing = checkedValue("cameraFacing") || "user";
 
   document.querySelector("#guestTitle").textContent = config.title;
   document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
@@ -961,8 +1095,12 @@ function initGuest() {
   }
 
   async function openCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1600 } },
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: currentFacing }, width: { ideal: 1280 }, height: { ideal: 1600 } },
       audio: false,
     });
     camera.srcObject = stream;
@@ -970,6 +1108,7 @@ function initGuest() {
     canvas.style.display = "none";
     cameraEmpty.style.display = "none";
     capturePhoto.disabled = false;
+    switchCamera.disabled = false;
   }
 
   function drawPlaceholder() {
@@ -998,7 +1137,7 @@ function initGuest() {
     if (sourceImage) {
       drawCover(originalCtx, sourceImage);
     } else if (camera.srcObject) {
-      drawCover(originalCtx, camera, true);
+      drawCover(originalCtx, camera, currentFacing === "user");
     } else {
       drawPlaceholder();
       originalCtx.drawImage(canvas, 0, 0);
@@ -1040,7 +1179,7 @@ function initGuest() {
 
   function captureFromVideo() {
     const image = new Image();
-    drawCover(ctx, camera, true);
+    drawCover(ctx, camera, currentFacing === "user");
     image.onload = () => {
       sourceImage = image;
       renderSouvenir();
@@ -1084,6 +1223,29 @@ function initGuest() {
       cameraEmpty.style.display = "block";
       cameraEmpty.innerHTML =
         "<strong>Kamera tidak bisa dibuka</strong><span>Coba izinkan akses kamera atau unggah foto dari galeri.</span>";
+    });
+  });
+  switchCamera.addEventListener("click", () => {
+    currentFacing = currentFacing === "user" ? "environment" : "user";
+    document.querySelector(`input[name="cameraFacing"][value="${currentFacing}"]`).checked = true;
+    openCamera().catch(() => {
+      currentFacing = currentFacing === "user" ? "environment" : "user";
+      document.querySelector(`input[name="cameraFacing"][value="${currentFacing}"]`).checked = true;
+      cameraEmpty.style.display = "block";
+      cameraEmpty.innerHTML =
+        "<strong>Kamera tidak bisa diganti</strong><span>Device/browser ini mungkin hanya menyediakan satu kamera.</span>";
+    });
+  });
+  document.querySelectorAll("input[name='cameraFacing']").forEach((input) => {
+    input.addEventListener("change", () => {
+      currentFacing = checkedValue("cameraFacing") || "user";
+      if (stream) {
+        openCamera().catch(() => {
+          cameraEmpty.style.display = "block";
+          cameraEmpty.innerHTML =
+            "<strong>Kamera tidak bisa dibuka</strong><span>Coba pilih kamera lain atau unggah foto dari galeri.</span>";
+        });
+      }
     });
   });
 

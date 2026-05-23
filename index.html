@@ -51,6 +51,10 @@
                 <span class="button-icon">[ ]</span>
                 Buka Kamera
               </button>
+              <button class="secondary-button" id="switchCamera" type="button" disabled>
+                <span class="button-icon">SW</span>
+                Ganti Kamera
+              </button>
               <button class="primary-button" id="capturePhoto" type="button" disabled>
                 <span class="button-icon">REC</span>
                 Ambil Selfie
@@ -59,6 +63,17 @@
                 <span class="button-icon">UP</span>
                 Unggah Foto
                 <input id="uploadPhoto" type="file" accept="image/*" />
+              </label>
+            </div>
+
+            <div class="camera-facing" role="radiogroup" aria-label="Pilihan kamera">
+              <label>
+                <input type="radio" name="cameraFacing" value="user" checked />
+                <span>Kamera depan</span>
+              </label>
+              <label>
+                <input type="radio" name="cameraFacing" value="environment" />
+                <span>Kamera belakang</span>
               </label>
             </div>
           </section>
