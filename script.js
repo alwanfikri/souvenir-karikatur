@@ -315,10 +315,14 @@ function loadImage(src) {
   });
 }
 
-function drawCover(ctx, source, mirror = false, zoom = 1) {
+function drawCover(ctx, source, mirror = false, zoom = 1, mode = "cover") {
   const sourceWidth = source.videoWidth || source.width;
   const sourceHeight = source.videoHeight || source.height;
-  const ratio = Math.max(CANVAS_WIDTH / sourceWidth, CANVAS_HEIGHT / sourceHeight) * zoom;
+  const fitRatio =
+    mode === "contain"
+      ? Math.min(CANVAS_WIDTH / sourceWidth, CANVAS_HEIGHT / sourceHeight)
+      : Math.max(CANVAS_WIDTH / sourceWidth, CANVAS_HEIGHT / sourceHeight);
+  const ratio = fitRatio * zoom;
   const width = sourceWidth * ratio;
   const height = sourceHeight * ratio;
   const x = (CANVAS_WIDTH - width) / 2;
@@ -326,6 +330,10 @@ function drawCover(ctx, source, mirror = false, zoom = 1) {
 
   ctx.save();
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  if (mode === "contain") {
+    ctx.fillStyle = "#f8f2ea";
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  }
   if (mirror) {
     ctx.translate(CANVAS_WIDTH, 0);
     ctx.scale(-1, 1);
@@ -1179,9 +1187,9 @@ function initGuest() {
     const originalCtx = originalCanvas.getContext("2d");
 
     if (sourceImage) {
-      drawCover(originalCtx, sourceImage, false, currentZoom);
+      drawCover(originalCtx, sourceImage, false, currentZoom, "contain");
     } else if (camera.srcObject) {
-      drawCover(originalCtx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom);
+      drawCover(originalCtx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom, "contain");
     } else {
       drawPlaceholder();
       originalCtx.drawImage(canvas, 0, 0);
@@ -1223,7 +1231,7 @@ function initGuest() {
 
   function captureFromVideo() {
     const image = new Image();
-    drawCover(ctx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom);
+    drawCover(ctx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom, "contain");
     image.onload = () => {
       sourceImage = image;
       renderSouvenir();

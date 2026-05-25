@@ -5,7 +5,7 @@ Web statis untuk souvenir digital acara: tamu mengambil selfie/wefie, hasilnya d
 ## Halaman
 
 - `index.html` - halaman tamu untuk selfie/wefie dan menyimpan hasil.
-- Halaman tamu memandu tamu mengisi nama lebih dulu, mendukung kamera bawaan HP, galeri, kamera live depan/belakang, dan slider zoom kamera.
+- Halaman tamu memandu tamu mengisi nama lebih dulu, mendukung kamera bawaan HP, galeri, kamera live depan/belakang, slider zoom kamera, dan preview live yang lebih ringkas di HP.
 - `admin.html` - panel admin untuk mengatur event, caption share, upload twibbon, engine karikatur, dan placeholder teks interaktif.
 - `manager.html` - panel manager untuk mengatur password admin prototipe.
 
