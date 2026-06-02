@@ -4,7 +4,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-3.1-flash-image";
+const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
 const apiKey = Deno.env.get("GEMINI_API_KEY");
 
 function jsonResponse(body: unknown, status = 200) {

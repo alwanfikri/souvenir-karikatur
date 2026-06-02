@@ -50,7 +50,7 @@ GEMINI_API_KEY=isi_api_key_google_ai_studio
 Opsional, kalau ingin mengganti model:
 
 ```txt
-GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
+GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 ```
 
 Setelah function `generate-caricature` dideploy, pakai endpoint ini di halaman admin:
@@ -60,3 +60,5 @@ https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature
 ```
 
 Karena halaman tamu bersifat publik, buka pengaturan function `generate-caricature` di Supabase lalu nonaktifkan `Verify JWT`. Secret `GEMINI_API_KEY` tetap aman karena hanya bisa dibaca dari server-side Edge Function.
+
+`gemini-2.5-flash-image` adalah model Nano Banana resmi untuk pemrosesan gambar cepat. Gemini image API tidak menyediakan free tier, jadi project Google AI Studio yang dipakai harus memiliki billing aktif.
