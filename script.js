@@ -31,7 +31,7 @@ const defaultConfig = {
   outputFormat: "portrait",
   frameFit: "cover",
   aiProvider: "local",
-  apiEndpoint: "/api/caricature",
+  apiEndpoint: "https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature",
   twibbon: "",
   text: {
     couple: {

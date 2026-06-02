@@ -1,6 +1,6 @@
 # Integrasi AI karikatur berbayar
 
-Mode sekarang memakai engine gratis lokal di browser (`aiProvider: "local"`). Untuk pindah ke AI berbayar, isi `Endpoint API karikatur` di `admin.html`, lalu pilih `API nanti`.
+Mode sekarang memakai engine gratis lokal di browser (`aiProvider: "local"`). Untuk pindah ke AI berbayar, isi `Endpoint API karikatur` di `admin.html`, lalu pilih `Gemini API`.
 
 Ukuran output dan twibbon:
 - Story 9:16: 1080 x 1920 px.
@@ -32,3 +32,29 @@ Catatan implementasi:
 - Web akan mencoba endpoint API lebih dulu saat `aiProvider` bernilai `api`.
 - Jika API gagal, web otomatis fallback ke karikatur lokal agar tamu tetap mendapat hasil.
 - Twibbon tetap dioverlay di browser setelah hasil karikatur diterima, jadi API tidak perlu tahu nama mempelai atau file frame.
+
+## Gemini / Nano Banana lewat Supabase
+
+Project ini sudah menyiapkan template Supabase Edge Function:
+
+```txt
+supabase/functions/generate-caricature/index.ts
+```
+
+Secret yang dibutuhkan di Supabase:
+
+```txt
+GEMINI_API_KEY=isi_api_key_google_ai_studio
+```
+
+Opsional, kalau ingin mengganti model:
+
+```txt
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
+```
+
+Setelah function `generate-caricature` dideploy, pakai endpoint ini di halaman admin:
+
+```txt
+https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature
+```
