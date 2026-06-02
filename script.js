@@ -1324,13 +1324,27 @@ function initGuest() {
   }
 
   function captureFromVideo() {
-    const image = new Image();
     drawCover(ctx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom, "contain");
+    const image = new Image();
     image.onload = () => {
       sourceImage = image;
-      renderSouvenir();
+      showPhotoPreview();
     };
     image.src = canvas.toDataURL("image/jpeg", 0.92);
+  }
+
+  function showPhotoPreview() {
+    if (!sourceImage) return;
+    applyOutputFormat(loadConfig().outputFormat, canvas);
+    drawCover(ctx, sourceImage, false, currentZoom, "contain");
+    canvas.style.display = "block";
+    camera.style.display = "none";
+    cameraEmpty.style.display = "none";
+    compareCard.hidden = true;
+    saveGift.disabled = true;
+    shareGift.disabled = true;
+    renderGift.innerHTML = '<span class="button-icon">GO</span>Buat Karikatur';
+    updateEngineNote();
   }
 
   async function shareSouvenir() {
@@ -1418,7 +1432,7 @@ function initGuest() {
     const image = new Image();
     image.onload = () => {
       sourceImage = image;
-      renderSouvenir();
+      showPhotoPreview();
     };
     image.src = URL.createObjectURL(file);
   });
@@ -1430,7 +1444,7 @@ function initGuest() {
     const image = new Image();
     image.onload = () => {
       sourceImage = image;
-      renderSouvenir();
+      showPhotoPreview();
     };
     image.src = URL.createObjectURL(file);
   });
