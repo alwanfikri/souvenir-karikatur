@@ -68,7 +68,7 @@ Deno.serve(async (request) => {
       .join(" ");
 
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: {
