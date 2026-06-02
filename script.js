@@ -33,7 +33,8 @@ const defaultConfig = {
   aiProvider: "local",
   apiEndpoint: "https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature",
   twibbon: "",
-  fluxPrompt: "Transform the uploaded selfie or group selfie into a wedding souvenir caricature. Preserve each person's identity, pose, head count, composition, and camera framing. Keep the image family-friendly, bright, clean, and ready to be overlaid with a transparent wedding twibbon/frame. Do not add text, logos, borders, or extra frame decorations.",
+  defaultGuestName: "Nama Tamu",
+  fluxPrompt: "Transform the uploaded photo into a caricature in wedding souvenir style. Strictly preserve the exact head count, identities, poses, composition, and framing of the original image. Absolutely do not add any additional people, extra figures, or background characters. If there is one person in the original photo, there must be exactly one person in the output. Keep the image bright, clean, family-friendly, and ready to be overlaid with a transparent wedding twibbon/frame. Do not add any text, logos, borders, or extra frame decorations.",
   text: {
     couple: {
       template: "{mempelai}",
@@ -113,8 +114,13 @@ function normalizeConfig(config) {
   const outputFormat = OUTPUT_FORMATS[config.outputFormat] ? config.outputFormat : defaultConfig.outputFormat;
   const legacyProvider = config.aiProvider === "api" ? "gemini" : config.aiProvider;
   const aiProvider = ["local", "flux", "gemini"].includes(legacyProvider) ? legacyProvider : defaultConfig.aiProvider;
-  const fluxPrompt = config.fluxPrompt !== undefined ? config.fluxPrompt : defaultConfig.fluxPrompt;
-  return { ...defaultConfig, ...config, aiProvider, outputFormat, text, fluxPrompt };
+  let fluxPrompt = config.fluxPrompt !== undefined ? config.fluxPrompt : defaultConfig.fluxPrompt;
+  const oldDefaultFluxPrompt = "Transform the uploaded selfie or group selfie into a wedding souvenir caricature. Preserve each person's identity, pose, head count, composition, and camera framing. Keep the image family-friendly, bright, clean, and ready to be overlaid with a transparent wedding twibbon/frame. Do not add text, logos, borders, or extra frame decorations.";
+  if (fluxPrompt === oldDefaultFluxPrompt) {
+    fluxPrompt = defaultConfig.fluxPrompt;
+  }
+  const defaultGuestName = config.defaultGuestName !== undefined ? config.defaultGuestName : defaultConfig.defaultGuestName;
+  return { ...defaultConfig, ...config, aiProvider, outputFormat, text, fluxPrompt, defaultGuestName };
 }
 
 function getOutputSize(format = defaultConfig.outputFormat) {
@@ -663,6 +669,7 @@ function initAdminForm() {
   const groom = document.querySelector("#adminGroom");
   const date = document.querySelector("#adminDate");
   const title = document.querySelector("#adminTitle");
+  const defaultGuestName = document.querySelector("#adminDefaultGuestName");
   const shareCaption = document.querySelector("#shareCaption");
   const aiProvider = document.querySelector("#aiProvider");
   const fluxPrompt = document.querySelector("#fluxPrompt");
@@ -695,6 +702,7 @@ function initAdminForm() {
   groom.value = config.groom;
   date.value = config.date;
   title.value = config.title;
+  defaultGuestName.value = config.defaultGuestName || "Nama Tamu";
   shareCaption.value = config.shareCaption;
   apiEndpoint.value = config.apiEndpoint;
   let activePlaceholder = checkedValue("activePlaceholder") || "couple";
@@ -742,6 +750,7 @@ function initAdminForm() {
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
       twibbon: currentTwibbon,
       fluxPrompt: fluxPrompt.value,
+      defaultGuestName: defaultGuestName.value,
       text: readTextSettings(),
     };
 
@@ -760,8 +769,9 @@ function initAdminForm() {
     ctx.roundRect(CANVAS_WIDTH / 2 - 230, 620, 460, 350, 170);
     ctx.fill();
 
-    await drawTwibbon(ctx, nextConfig, "Nama Tamu");
-    drawTextPlaceholders(ctx, nextConfig, "Nama Tamu", activePlaceholder);
+    const guestNameForPreview = defaultGuestName.value || "Nama Tamu";
+    await drawTwibbon(ctx, nextConfig, guestNameForPreview);
+    drawTextPlaceholders(ctx, nextConfig, guestNameForPreview, activePlaceholder);
   }
 
   function readTextSettings() {
@@ -802,6 +812,7 @@ function initAdminForm() {
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
       twibbon: currentTwibbon,
       fluxPrompt: fluxPrompt.value,
+      defaultGuestName: defaultGuestName.value,
       text: readTextSettings(),
     };
     saveConfig(nextConfig);
@@ -915,6 +926,7 @@ function initAdminForm() {
     groom,
     date,
     title,
+    defaultGuestName,
     shareCaption,
     fluxPrompt,
     apiEndpoint,

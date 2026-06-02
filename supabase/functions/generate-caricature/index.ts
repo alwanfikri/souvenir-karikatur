@@ -58,9 +58,9 @@ function styleInstruction(style: string) {
 
 function buildPrompt(style: string, extraPrompt: string) {
   return [
-    "Transform the uploaded selfie or group selfie into a wedding souvenir caricature.",
+    "Transform the uploaded photo into a wedding souvenir caricature.",
     styleInstruction(style),
-    "Preserve each person's identity, pose, head count, composition, and camera framing.",
+    "Strictly preserve the exact head count, identities, poses, composition, and framing of the original image. Absolutely do not add any additional people, extra figures, or background characters.",
     "Keep the image family-friendly, bright, clean, and ready to be overlaid with a transparent wedding twibbon/frame.",
     "Do not add text, logos, borders, or extra frame decorations.",
     extraPrompt,
