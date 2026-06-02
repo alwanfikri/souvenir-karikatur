@@ -1111,8 +1111,11 @@ function initGuest() {
       stream.getTracks().forEach((track) => track.stop());
     }
 
+    currentZoom = 1;
+    cameraZoom.value = "1";
+
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: currentFacing }, width: { ideal: 1280 }, height: { ideal: 1600 } },
+      video: { facingMode: { ideal: currentFacing } },
       audio: false,
     });
     camera.srcObject = stream;
@@ -1132,7 +1135,7 @@ function initGuest() {
       cameraZoom.min = zoomCapabilities.min || 1;
       cameraZoom.max = Math.min(zoomCapabilities.max || 2, 4);
       cameraZoom.step = zoomCapabilities.step || 0.1;
-      currentZoom = Math.max(Number(cameraZoom.min), Math.min(Number(cameraZoom.value), Number(cameraZoom.max)));
+      currentZoom = Math.max(Number(cameraZoom.min), Math.min(1, Number(cameraZoom.max)));
       cameraZoom.value = currentZoom;
       await applyCameraZoom();
     } else {
