@@ -269,7 +269,7 @@ async function saveTwibbonConceptToCloud(concept) {
   const settings = loadCloudSettings();
   if (!isCloudConfigured()) return false;
 
-  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/twibbon_concepts`, {
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/twibbon_concepts?on_conflict=event_slug,name`, {
     method: "POST",
     headers: {
       ...getSupabaseHeaders(settings),
@@ -1139,6 +1139,9 @@ function initGuest() {
   document.querySelector("#guestTitle").textContent = config.title;
   document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
   document.querySelector("#eventDate").textContent = config.date;
+  if (config.defaultGuestName) {
+    guestName.placeholder = config.defaultGuestName;
+  }
 
   const styleSelectorGroup = document.querySelector("#styleSelectorGroup");
   if (styleSelectorGroup) {
