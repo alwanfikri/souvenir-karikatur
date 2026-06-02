@@ -58,3 +58,5 @@ Setelah function `generate-caricature` dideploy, pakai endpoint ini di halaman a
 ```txt
 https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature
 ```
+
+Karena halaman tamu bersifat publik, buka pengaturan function `generate-caricature` di Supabase lalu nonaktifkan `Verify JWT`. Secret `GEMINI_API_KEY` tetap aman karena hanya bisa dibaca dari server-side Edge Function.

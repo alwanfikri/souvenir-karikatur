@@ -459,21 +459,38 @@ function tintHighlights(ctx, style) {
 }
 
 async function generateCaricature(sourceCanvas, style, config) {
+  generateCaricature.lastStatus = { provider: "local", message: "Mode gratis lokal aktif." };
   if (config.aiProvider === "api" && config.apiEndpoint) {
     try {
-      return await requestPaidAiCaricature(sourceCanvas, style, config);
+      const result = await requestPaidAiCaricature(sourceCanvas, style, config);
+      generateCaricature.lastStatus = { provider: "api", message: "Gemini API berhasil memproses karikatur." };
+      return result;
     } catch (error) {
       console.warn("API caricature failed, using local fallback.", error);
+      generateCaricature.lastStatus = {
+        provider: "fallback",
+        message: `Gemini API gagal (${error.message}). Dipakai fallback lokal.`,
+      };
     }
   }
 
   return applyLocalCaricature(sourceCanvas, style);
 }
 
+function getAiRequestHeaders(config) {
+  const headers = { "Content-Type": "application/json" };
+  const settings = loadCloudSettings();
+  if (config.apiEndpoint?.includes("/functions/v1/") && settings.supabaseAnonKey) {
+    headers.apikey = settings.supabaseAnonKey;
+    headers.Authorization = `Bearer ${settings.supabaseAnonKey}`;
+  }
+  return headers;
+}
+
 async function requestPaidAiCaricature(sourceCanvas, style, config) {
   const response = await fetch(config.apiEndpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAiRequestHeaders(config),
     body: JSON.stringify({
       image: sourceCanvas.toDataURL("image/jpeg", 0.9),
       style,
@@ -481,8 +498,10 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
     }),
   });
 
-  if (!response.ok) throw new Error(`Caricature API failed: ${response.status}`);
   const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.detail || payload.error || `HTTP ${response.status}`);
+  }
   const image = await loadImage(payload.image);
   const resultCanvas = document.createElement("canvas");
   resultCanvas.width = CANVAS_WIDTH;
@@ -1060,6 +1079,7 @@ function initGuest() {
   const guestName = document.querySelector("#guestName");
   const beforeImage = document.querySelector("#beforeImage");
   const afterImage = document.querySelector("#afterImage");
+  const engineNote = document.querySelector("#engineNote");
   const compareCard = document.querySelector("#compareCard");
   const compareAfter = document.querySelector("#compareAfter");
   const compareLine = document.querySelector("#compareLine");
@@ -1081,6 +1101,20 @@ function initGuest() {
   document.querySelector("#guestTitle").textContent = config.title;
   document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
   document.querySelector("#eventDate").textContent = config.date;
+
+  function updateEngineNote(status = null) {
+    const activeConfig = loadConfig();
+    if (status?.message) {
+      engineNote.textContent = status.message;
+      return;
+    }
+    engineNote.textContent =
+      activeConfig.aiProvider === "api"
+        ? "Gemini API aktif. Foto akan diproses dengan AI saat membuat karikatur."
+        : "Mode gratis lokal aktif. Pilih Gemini API dari panel admin untuk memakai AI.";
+  }
+
+  updateEngineNote();
 
   function openAdminGate(event) {
     if (isAdminAuthenticated()) return;
@@ -1201,8 +1235,14 @@ function initGuest() {
     beforeImage.src = originalCanvas.toDataURL("image/jpeg", 0.9);
     renderGift.disabled = true;
     renderGift.textContent = "Memproses...";
+    updateEngineNote(
+      loadConfig().aiProvider === "api"
+        ? { message: "Sedang memproses foto dengan Gemini API..." }
+        : { message: "Sedang memproses foto dengan mode gratis lokal..." }
+    );
     try {
       const caricatureCanvas = await generateCaricature(originalCanvas, checkedValue("style"), loadConfig());
+      updateEngineNote(generateCaricature.lastStatus);
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.drawImage(caricatureCanvas, 0, 0);
       const latestConfig = loadConfig();
