@@ -33,6 +33,7 @@ const defaultConfig = {
   aiProvider: "local",
   apiEndpoint: "https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature",
   twibbon: "",
+  fluxPrompt: "Transform the uploaded selfie or group selfie into a wedding souvenir caricature. Preserve each person's identity, pose, head count, composition, and camera framing. Keep the image family-friendly, bright, clean, and ready to be overlaid with a transparent wedding twibbon/frame. Do not add text, logos, borders, or extra frame decorations.",
   text: {
     couple: {
       template: "{mempelai}",
@@ -112,7 +113,8 @@ function normalizeConfig(config) {
   const outputFormat = OUTPUT_FORMATS[config.outputFormat] ? config.outputFormat : defaultConfig.outputFormat;
   const legacyProvider = config.aiProvider === "api" ? "gemini" : config.aiProvider;
   const aiProvider = ["local", "flux", "gemini"].includes(legacyProvider) ? legacyProvider : defaultConfig.aiProvider;
-  return { ...defaultConfig, ...config, aiProvider, outputFormat, text };
+  const fluxPrompt = config.fluxPrompt !== undefined ? config.fluxPrompt : defaultConfig.fluxPrompt;
+  return { ...defaultConfig, ...config, aiProvider, outputFormat, text, fluxPrompt };
 }
 
 function getOutputSize(format = defaultConfig.outputFormat) {
@@ -500,7 +502,7 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
       engine: config.aiProvider,
       outputFormat: config.outputFormat,
       style,
-      prompt: "Create a caricature that follows the uploaded selfie or group selfie composition. Preserve the number of people, poses, and overall framing.",
+      prompt: config.aiProvider === "flux" ? (config.fluxPrompt || "") : "Create a caricature that follows the uploaded selfie or group selfie composition. Preserve the number of people, poses, and overall framing.",
     }),
   });
 
@@ -663,6 +665,8 @@ function initAdminForm() {
   const title = document.querySelector("#adminTitle");
   const shareCaption = document.querySelector("#shareCaption");
   const aiProvider = document.querySelector("#aiProvider");
+  const fluxPrompt = document.querySelector("#fluxPrompt");
+  const fluxPromptGroup = document.querySelector("#fluxPromptGroup");
   const apiEndpoint = document.querySelector("#apiEndpoint");
   const frameSizeHint = document.querySelector("#frameSizeHint");
   const placeholderTemplate = document.querySelector("#placeholderTemplate");
@@ -712,6 +716,15 @@ function initAdminForm() {
 
   document.querySelector(`input[name="frameFit"][value="${config.frameFit}"]`).checked = true;
   aiProvider.value = config.aiProvider;
+  fluxPrompt.value = config.fluxPrompt || "";
+  function updateFluxPromptVisibility() {
+    if (aiProvider.value === "flux") {
+      fluxPromptGroup.style.display = "block";
+    } else {
+      fluxPromptGroup.style.display = "none";
+    }
+  }
+  updateFluxPromptVisibility();
   document.querySelector(`input[name="outputFormat"][value="${activeFormat}"]`).checked = true;
   updateFormatUi();
 
@@ -728,6 +741,7 @@ function initAdminForm() {
       aiProvider: aiProvider.value,
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
       twibbon: currentTwibbon,
+      fluxPrompt: fluxPrompt.value,
       text: readTextSettings(),
     };
 
@@ -787,6 +801,7 @@ function initAdminForm() {
       aiProvider: aiProvider.value,
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
       twibbon: currentTwibbon,
+      fluxPrompt: fluxPrompt.value,
       text: readTextSettings(),
     };
     saveConfig(nextConfig);
@@ -901,6 +916,7 @@ function initAdminForm() {
     date,
     title,
     shareCaption,
+    fluxPrompt,
     apiEndpoint,
   ].forEach((input) => input.addEventListener("input", preview));
   [
@@ -936,7 +952,10 @@ function initAdminForm() {
     });
   });
   document.querySelectorAll("input[name='frameFit']").forEach((input) => input.addEventListener("change", preview));
-  aiProvider.addEventListener("change", preview);
+  aiProvider.addEventListener("change", () => {
+    updateFluxPromptVisibility();
+    preview();
+  });
   centerPlaceholder.addEventListener("click", () => {
     textSettings[activePlaceholder].x = CANVAS_WIDTH / 2;
     syncPlaceholderControls();
@@ -1108,6 +1127,15 @@ function initGuest() {
   document.querySelector("#guestTitle").textContent = config.title;
   document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
   document.querySelector("#eventDate").textContent = config.date;
+
+  const styleSelectorGroup = document.querySelector("#styleSelectorGroup");
+  if (styleSelectorGroup) {
+    if (config.aiProvider === "flux") {
+      styleSelectorGroup.style.display = "none";
+    } else {
+      styleSelectorGroup.style.display = "block";
+    }
+  }
 
   function updateEngineNote(status = null) {
     const activeConfig = loadConfig();

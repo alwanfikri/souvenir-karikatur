@@ -208,6 +208,12 @@
               </select>
             </div>
 
+            <div class="field-group" id="fluxPromptGroup" style="display: none;">
+              <label for="fluxPrompt">Prompt Khusus FLUX Kontext</label>
+              <textarea id="fluxPrompt" maxlength="600" rows="4" placeholder="Masukkan instruksi gaya karikatur untuk FLUX..."></textarea>
+              <span class="field-hint">Menentukan gaya hasil karikatur (contoh: watercolor wedding caricature, highly detailed, soft background, dsb.)</span>
+            </div>
+
             <div class="field-group">
               <label for="apiEndpoint">Endpoint API karikatur</label>
               <input id="apiEndpoint" type="text" placeholder="https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature" maxlength="160" />

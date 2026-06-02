@@ -147,9 +147,12 @@ async function uploadTemporaryImage(image: ParsedImage) {
     throw new Error(`Upload input FLUX gagal (${response.status}). Pastikan bucket ${inputBucket} sudah dibuat public.`);
   }
 
+  const publicUrl = `${supabaseUrl}/storage/v1/object/public/${inputBucket}/${objectPath}`;
+  console.log(`Temporary image uploaded. Public URL: ${publicUrl}`);
+
   return {
     objectPath,
-    publicUrl: `${supabaseUrl}/storage/v1/object/public/${inputBucket}/${objectPath}`,
+    publicUrl,
   };
 }
 
@@ -162,7 +165,8 @@ async function removeTemporaryImage(objectPath: string) {
 }
 
 async function pollFluxTask(taskId: string) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  console.log(`Memulai polling untuk Task ID: ${taskId}`);
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     const response = await fetch(`https://api.fluxapi.ai/api/v1/flux/kontext/record-info?taskId=${taskId}`, {
       headers: { Authorization: `Bearer ${fluxApiKey}` },
@@ -172,18 +176,24 @@ async function pollFluxTask(taskId: string) {
       throw new Error(payload.msg || `FluxAPI status HTTP ${response.status}`);
     }
 
-    const state = payload.data?.state;
-    if (state === "success") {
-      const urls = JSON.parse(payload.data.resultJson || "{}").resultUrls || [];
-      if (!urls[0]) throw new Error("FluxAPI selesai tanpa URL hasil.");
-      return urls[0];
+    const successFlag = payload.data?.successFlag;
+    console.log(`Polling attempt ${attempt}: successFlag = ${successFlag}`);
+
+    if (successFlag === 1) {
+      const resultImageUrl = payload.data?.response?.resultImageUrl;
+      if (!resultImageUrl) {
+        throw new Error("FluxAPI sukses tetapi tidak mengembalikan URL hasil (resultImageUrl).");
+      }
+      console.log(`FluxAPI sukses. URL Hasil: ${resultImageUrl}`);
+      return resultImageUrl;
     }
-    if (state === "fail") {
-      throw new Error(payload.data?.failMsg || "FluxAPI gagal memproses gambar.");
+    if (successFlag === 2 || successFlag === 3) {
+      const errorMsg = payload.data?.errorMessage || "FluxAPI gagal memproses gambar.";
+      throw new Error(`${errorMsg} (successFlag: ${successFlag})`);
     }
   }
 
-  throw new Error("FluxAPI belum selesai setelah 60 detik.");
+  throw new Error("FluxAPI belum selesai setelah 120 detik.");
 }
 
 async function downloadAsDataUrl(url: string) {
@@ -248,7 +258,9 @@ Deno.serve(async (request) => {
     const payload = await request.json();
     const engine = String(payload.engine || "gemini");
     const image = parseDataUrl(String(payload.image || ""));
-    const prompt = buildPrompt(String(payload.style || "soft"), String(payload.prompt || ""));
+    const prompt = engine === "flux"
+      ? String(payload.prompt || "")
+      : buildPrompt(String(payload.style || "soft"), String(payload.prompt || ""));
 
     if (engine === "flux") {
       return jsonResponse(await requestFlux(image, prompt, String(payload.outputFormat || "portrait")));
