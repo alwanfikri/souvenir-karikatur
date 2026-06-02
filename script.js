@@ -110,7 +110,9 @@ function normalizeConfig(config) {
     },
   };
   const outputFormat = OUTPUT_FORMATS[config.outputFormat] ? config.outputFormat : defaultConfig.outputFormat;
-  return { ...defaultConfig, ...config, outputFormat, text };
+  const legacyProvider = config.aiProvider === "api" ? "gemini" : config.aiProvider;
+  const aiProvider = ["local", "flux", "gemini"].includes(legacyProvider) ? legacyProvider : defaultConfig.aiProvider;
+  return { ...defaultConfig, ...config, aiProvider, outputFormat, text };
 }
 
 function getOutputSize(format = defaultConfig.outputFormat) {
@@ -459,17 +461,19 @@ function tintHighlights(ctx, style) {
 }
 
 async function generateCaricature(sourceCanvas, style, config) {
-  generateCaricature.lastStatus = { provider: "local", message: "Mode gratis lokal aktif." };
-  if (config.aiProvider === "api" && config.apiEndpoint) {
+  generateCaricature.lastStatus = { provider: "local", message: "Cartoon Lokal aktif." };
+  if (config.aiProvider !== "local" && config.apiEndpoint) {
     try {
       const result = await requestPaidAiCaricature(sourceCanvas, style, config);
-      generateCaricature.lastStatus = { provider: "api", message: "Gemini API berhasil memproses karikatur." };
+      const label = config.aiProvider === "flux" ? "FLUX Kontext" : "Gemini API";
+      generateCaricature.lastStatus = { provider: config.aiProvider, message: `${label} berhasil memproses karikatur.` };
       return result;
     } catch (error) {
       console.warn("API caricature failed, using local fallback.", error);
+      const label = config.aiProvider === "flux" ? "FLUX Kontext" : "Gemini API";
       generateCaricature.lastStatus = {
         provider: "fallback",
-        message: `Gemini API gagal (${error.message}). Dipakai fallback lokal.`,
+        message: `${label} gagal (${error.message}). Dipakai fallback lokal.`,
       };
     }
   }
@@ -493,6 +497,8 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
     headers: getAiRequestHeaders(config),
     body: JSON.stringify({
       image: sourceCanvas.toDataURL("image/jpeg", 0.9),
+      engine: config.aiProvider,
+      outputFormat: config.outputFormat,
       style,
       prompt: "Create a caricature that follows the uploaded selfie or group selfie composition. Preserve the number of people, poses, and overall framing.",
     }),
@@ -656,6 +662,7 @@ function initAdminForm() {
   const date = document.querySelector("#adminDate");
   const title = document.querySelector("#adminTitle");
   const shareCaption = document.querySelector("#shareCaption");
+  const aiProvider = document.querySelector("#aiProvider");
   const apiEndpoint = document.querySelector("#apiEndpoint");
   const frameSizeHint = document.querySelector("#frameSizeHint");
   const placeholderTemplate = document.querySelector("#placeholderTemplate");
@@ -704,7 +711,7 @@ function initAdminForm() {
   }
 
   document.querySelector(`input[name="frameFit"][value="${config.frameFit}"]`).checked = true;
-  document.querySelector(`input[name="aiProvider"][value="${config.aiProvider}"]`).checked = true;
+  aiProvider.value = config.aiProvider;
   document.querySelector(`input[name="outputFormat"][value="${activeFormat}"]`).checked = true;
   updateFormatUi();
 
@@ -718,7 +725,7 @@ function initAdminForm() {
       shareCaption: shareCaption.value || defaultConfig.shareCaption,
       outputFormat: activeFormat,
       frameFit: checkedValue("frameFit"),
-      aiProvider: checkedValue("aiProvider"),
+      aiProvider: aiProvider.value,
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
       twibbon: currentTwibbon,
       text: readTextSettings(),
@@ -777,7 +784,7 @@ function initAdminForm() {
       shareCaption: shareCaption.value || defaultConfig.shareCaption,
       outputFormat: activeFormat,
       frameFit: checkedValue("frameFit"),
-      aiProvider: checkedValue("aiProvider"),
+      aiProvider: aiProvider.value,
       apiEndpoint: apiEndpoint.value || defaultConfig.apiEndpoint,
       twibbon: currentTwibbon,
       text: readTextSettings(),
@@ -929,7 +936,7 @@ function initAdminForm() {
     });
   });
   document.querySelectorAll("input[name='frameFit']").forEach((input) => input.addEventListener("change", preview));
-  document.querySelectorAll("input[name='aiProvider']").forEach((input) => input.addEventListener("change", preview));
+  aiProvider.addEventListener("change", preview);
   centerPlaceholder.addEventListener("click", () => {
     textSettings[activePlaceholder].x = CANVAS_WIDTH / 2;
     syncPlaceholderControls();
@@ -1108,10 +1115,11 @@ function initGuest() {
       engineNote.textContent = status.message;
       return;
     }
+    const label = activeConfig.aiProvider === "flux" ? "FLUX Kontext" : "Gemini API";
     engineNote.textContent =
-      activeConfig.aiProvider === "api"
-        ? "Gemini API aktif. Foto akan diproses dengan AI saat membuat karikatur."
-        : "Mode gratis lokal aktif. Pilih Gemini API dari panel admin untuk memakai AI.";
+      activeConfig.aiProvider !== "local"
+        ? `${label} aktif. Foto akan diproses dengan AI saat membuat karikatur.`
+        : "Cartoon Lokal aktif. Pilih FLUX Kontext atau Gemini API dari panel admin untuk memakai AI.";
   }
 
   updateEngineNote();
@@ -1236,9 +1244,9 @@ function initGuest() {
     renderGift.disabled = true;
     renderGift.textContent = "Memproses...";
     updateEngineNote(
-      loadConfig().aiProvider === "api"
-        ? { message: "Sedang memproses foto dengan Gemini API..." }
-        : { message: "Sedang memproses foto dengan mode gratis lokal..." }
+      loadConfig().aiProvider !== "local"
+        ? { message: `Sedang memproses foto dengan ${loadConfig().aiProvider === "flux" ? "FLUX Kontext" : "Gemini API"}...` }
+        : { message: "Sedang memproses foto dengan Cartoon Lokal..." }
     );
     try {
       const caricatureCanvas = await generateCaricature(originalCanvas, checkedValue("style"), loadConfig());

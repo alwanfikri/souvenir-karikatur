@@ -94,6 +94,30 @@ Untuk testing di satu browser, kamu juga bisa membuka `manager.html`, lalu isi:
 
 Setelah disimpan, halaman admin akan menyimpan setting ke Supabase. Halaman tamu akan membaca setting dari Supabase saat dibuka.
 
+## 4. Storage Sementara untuk FLUX Kontext
+
+FluxAPI.ai membutuhkan URL publik untuk membaca selfie. Jalankan SQL ini satu kali:
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('souvenir-ai-inputs', 'souvenir-ai-inputs', true)
+on conflict (id) do update set public = true;
+```
+
+Edge Function mengunggah selfie ke bucket ini memakai service-role server-side, lalu menghapusnya otomatis setelah task FLUX selesai.
+
+Tambahkan secret Edge Function:
+
+```txt
+FLUXAPI_API_KEY=isi_api_key_fluxapi
+```
+
+Secret opsional jika nama bucket ingin diganti:
+
+```txt
+FLUX_INPUT_BUCKET=souvenir-ai-inputs
+```
+
 ## Catatan Production
 
 Anon key aman dipakai di browser, tetapi policy public write tidak aman untuk acara sungguhan. Untuk production, gunakan login admin/backend agar hanya admin yang bisa mengubah event.

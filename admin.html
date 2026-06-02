@@ -200,17 +200,12 @@
             </div>
 
             <div class="field-group">
-              <span class="label-text">Engine karikatur</span>
-              <div class="segmented" role="radiogroup" aria-label="Engine karikatur">
-                <label>
-                  <input type="radio" name="aiProvider" value="local" checked />
-                  <span>Gratis lokal</span>
-                </label>
-                <label>
-                  <input type="radio" name="aiProvider" value="api" />
-                  <span>Gemini API</span>
-                </label>
-              </div>
+              <label for="aiProvider">Engine karikatur</label>
+              <select id="aiProvider">
+                <option value="local">Cartoon Lokal (Gratis)</option>
+                <option value="flux">FLUX Kontext</option>
+                <option value="gemini">Gemini API</option>
+              </select>
             </div>
 
             <div class="field-group">
