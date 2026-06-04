@@ -113,7 +113,8 @@ function normalizeConfig(config) {
   };
   const outputFormat = OUTPUT_FORMATS[config.outputFormat] ? config.outputFormat : defaultConfig.outputFormat;
   const legacyProvider = config.aiProvider === "api" ? "gemini" : config.aiProvider;
-  const aiProvider = ["local", "flux", "gemini"].includes(legacyProvider) ? legacyProvider : defaultConfig.aiProvider;
+  const aiProvider = ["local", "flux", "fal", "gemini"].includes(legacyProvider) ? legacyProvider : defaultConfig.aiProvider;
+  
   let fluxPrompt = config.fluxPrompt !== undefined ? config.fluxPrompt : defaultConfig.fluxPrompt;
   const oldDefaultFluxPrompt = "Transform the uploaded selfie or group selfie into a wedding souvenir caricature. Preserve each person's identity, pose, head count, composition, and camera framing. Keep the image family-friendly, bright, clean, and ready to be overlaid with a transparent wedding twibbon/frame. Do not add text, logos, borders, or extra frame decorations.";
   if (fluxPrompt === oldDefaultFluxPrompt) {
@@ -508,7 +509,7 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
       engine: config.aiProvider,
       outputFormat: config.outputFormat,
       style,
-      prompt: config.aiProvider === "flux" ? (config.fluxPrompt || "") : "Create a caricature that follows the uploaded selfie or group selfie composition. Preserve the number of people, poses, and overall framing.",
+      prompt: (config.aiProvider === "flux" || config.aiProvider === "fal") ? (config.fluxPrompt || "") : "Create a caricature that follows the uploaded selfie or group selfie composition. Preserve the number of people, poses, and overall framing.",
     }),
   });
 
@@ -726,7 +727,7 @@ function initAdminForm() {
   aiProvider.value = config.aiProvider;
   fluxPrompt.value = config.fluxPrompt || "";
   function updateFluxPromptVisibility() {
-    if (aiProvider.value === "flux") {
+    if (aiProvider.value === "flux" || aiProvider.value === "fal") {
       fluxPromptGroup.style.display = "block";
     } else {
       fluxPromptGroup.style.display = "none";
