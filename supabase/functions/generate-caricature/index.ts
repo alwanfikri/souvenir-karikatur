@@ -284,7 +284,7 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
         body: JSON.stringify({
           prompt: prompt,
           image_url: uploaded.publicUrl,
-          strength: 0.85,
+          strength: 0.75,
           num_inference_steps: 40,
           guidance_scale: 3.5,
           enable_safety_checker: true
