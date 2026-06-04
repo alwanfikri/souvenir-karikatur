@@ -296,7 +296,7 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
       throw new Error(payload?.error?.message || `Fal.ai HTTP ${response.status}`);
     }
 
-    const resultUrl = payload.result_image_url ?? payload.resultImageUrl;
+    const resultUrl = payload.images?.[0]?.url || payload.result_image_url || payload.resultImageUrl;
     if (!resultUrl) {
       throw new Error("Fal.ai tidak mengembalikan URL hasil.");
     }
