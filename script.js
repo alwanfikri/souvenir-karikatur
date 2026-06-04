@@ -474,12 +474,12 @@ async function generateCaricature(sourceCanvas, style, config) {
   if (config.aiProvider !== "local" && config.apiEndpoint) {
     try {
       const result = await requestPaidAiCaricature(sourceCanvas, style, config);
-      const label = config.aiProvider === "flux" ? "FLUX Kontext" : "Gemini API";
+      const label = config.aiProvider === "flux" ? "FLUX Kontext" : (config.aiProvider === "fal" ? "Fal.ai Flux Pro" : "Gemini API");
       generateCaricature.lastStatus = { provider: config.aiProvider, message: `${label} berhasil memproses karikatur.` };
       return result;
     } catch (error) {
       console.warn("API caricature failed, using local fallback.", error);
-      const label = config.aiProvider === "flux" ? "FLUX Kontext" : "Gemini API";
+      const label = config.aiProvider === "flux" ? "FLUX Kontext" : (config.aiProvider === "fal" ? "Fal.ai Flux Pro" : "Gemini API");
       generateCaricature.lastStatus = {
         provider: "fallback",
         message: `${label} gagal (${error.message}). Dipakai fallback lokal.`,
@@ -1159,11 +1159,11 @@ function initGuest() {
       engineNote.textContent = status.message;
       return;
     }
-    const label = activeConfig.aiProvider === "flux" ? "FLUX Kontext" : "Gemini API";
+    const label = activeConfig.aiProvider === "flux" ? "FLUX Kontext" : (activeConfig.aiProvider === "fal" ? "Fal.ai Flux Pro" : "Gemini API");
     engineNote.textContent =
       activeConfig.aiProvider !== "local"
         ? `${label} aktif. Foto akan diproses dengan AI saat membuat karikatur.`
-        : "Cartoon Lokal aktif. Pilih FLUX Kontext atau Gemini API dari panel admin untuk memakai AI.";
+        : "Cartoon Lokal aktif. Pilih provider AI dari panel admin untuk memakai AI.";
   }
 
   updateEngineNote();
@@ -1289,7 +1289,7 @@ function initGuest() {
     renderGift.textContent = "Memproses...";
     updateEngineNote(
       loadConfig().aiProvider !== "local"
-        ? { message: `Sedang memproses foto dengan ${loadConfig().aiProvider === "flux" ? "FLUX Kontext" : "Gemini API"}...` }
+        ? { message: `Sedang memproses foto dengan ${loadConfig().aiProvider === "flux" ? "FLUX Kontext" : (loadConfig().aiProvider === "fal" ? "Fal.ai Flux Pro" : "Gemini API")}...` }
         : { message: "Sedang memproses foto dengan Cartoon Lokal..." }
     );
     try {
