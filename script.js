@@ -517,6 +517,9 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
   if (!response.ok) {
     throw new Error(payload.detail || payload.error || `HTTP ${response.status}`);
   }
+  if (!payload.image) {
+    throw new Error('API response missing image URL');
+  }
   const image = await loadImage(payload.image);
   const resultCanvas = document.createElement("canvas");
   resultCanvas.width = CANVAS_WIDTH;
