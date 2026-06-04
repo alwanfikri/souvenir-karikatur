@@ -1,29 +1,20 @@
-/*
-  Supabase Edge Function – generate‑caricature
-  Supports three AI providers:
-    • gemini  (Google Gemini flash image model)
-    • flux    (FluxAPI Kontekst)
-    • fal     (Fal.ai Flux Pro)
-  The front‑end passes:
-    - engine: "gemini" | "flux" | "fal"
-    - image: data‑url (png/jpg/webp)
-    - prompt: custom prompt for flux/fal, otherwise built from style + extraPrompt
-    - outputFormat: "portrait" | "story" … (used for aspect‑ratio)
-*/
+// -------------------------------------------------------------------
+// Edge Function – generate‑caricature
+// -------------------------------------------------------------------
 
-// -------------------------------------------------------------------
 // CORS headers – allow the front‑end to call this function
-// -------------------------------------------------------------------
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // -------------------------------------------------------------------
 // Environment variables (Supabase Secrets)
 // -------------------------------------------------------------------
-const geminiModel = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
+const geminiModel =
+  Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
 const fluxApiKey = Deno.env.get("FLUXAPI_API_KEY") || "";
 const falApiKey = Deno.env.get("FALAI_API_KEY") || "";
@@ -48,7 +39,9 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function parseDataUrl(dataUrl: string): ParsedImage {
-  const match = dataUrl.match(/^data:(image\/(?:png|jpe?g|webp));base64,(.+)$/i);
+  const match = dataUrl.match(
+    /^data:(image\/(?:png|jpe?g|webp));base64,(.+)$/i,
+  );
   if (!match) {
     throw new Error(
       "Format gambar harus berupa data URL image/png, image/jpeg, atau image/webp.",
@@ -107,7 +100,9 @@ function storageHeaders(contentType?: string) {
 
 async function uploadTemporaryImage(image: ParsedImage) {
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Environment Supabase Storage belum tersedia.");
+    throw new Error(
+      "Environment Supabase Storage belum tersedia.",
+    );
   }
 
   const objectPath = `${crypto.randomUUID()}.${image.extension}`;
@@ -165,11 +160,24 @@ async function requestGemini(image: ParsedImage, prompt: string) {
     `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiApiKey,
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.data } }],
-        }],
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: image.mimeType,
+                  data: image.data,
+                },
+              },
+            ],
+          },
+        ],
       }),
     },
   );
@@ -180,7 +188,9 @@ async function requestGemini(image: ParsedImage, prompt: string) {
   }
 
   const parts = payload?.candidates?.[0]?.content?.parts || [];
-  const imagePart = parts.find((p: Record<string, unknown>) => p.inlineData || p.inline_data);
+  const imagePart = parts.find(
+    (p: Record<string, unknown>) => p.inlineData || p.inline_data,
+  );
   const inlineData = imagePart?.inlineData || imagePart?.inline_data;
 
   if (!inlineData?.data) {
@@ -188,15 +198,25 @@ async function requestGemini(image: ParsedImage, prompt: string) {
   }
 
   const mime = inlineData.mimeType || inlineData.mime_type || "image/png";
-  return { image: `data:${mime};base64,${inlineData.data}`, provider: "gemini", model: geminiModel };
+  return {
+    image: `data:${mime};base64,${inlineData.data}`,
+    provider: "gemini",
+    model: geminiModel,
+  };
 }
 
 // -------------------------------------------------------------------
 // Provider: FluxAPI (existing implementation)
 // -------------------------------------------------------------------
-async function requestFlux(image: ParsedImage, prompt: string, outputFormat: string) {
+async function requestFlux(
+  image: ParsedImage,
+  prompt: string,
+  outputFormat: string,
+) {
   if (!fluxApiKey) {
-    throw new Error("FLUXAPI_API_KEY belum diset di Supabase Secrets.");
+    throw new Error(
+      "FLUXAPI_API_KEY belum diset di Supabase Secrets.",
+    );
   }
 
   let objectPath = "";
@@ -208,7 +228,10 @@ async function requestFlux(image: ParsedImage, prompt: string, outputFormat: str
       "https://api.fluxapi.ai/api/v1/flux/kontext/generate",
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${fluxApiKey}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${fluxApiKey}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           prompt,
           inputImage: uploaded.publicUrl,
@@ -225,18 +248,24 @@ async function requestFlux(image: ParsedImage, prompt: string, outputFormat: str
     }
 
     const resultUrl = await pollFluxTask(payload.data.taskId);
-    return { image: await downloadAsDataUrl(resultUrl), provider: "fluxapi", model: "flux-kontext" };
+    return {
+      image: await downloadAsDataUrl(resultUrl),
+      provider: "fluxapi",
+      model: "flux-kontext",
+    };
   } finally {
     await removeTemporaryImage(objectPath);
   }
 }
 
 // -------------------------------------------------------------------
-// Provider: Fal.ai Flux Pro
+// Provider: Fal.ai Flux Pro (updated)
 // -------------------------------------------------------------------
 async function requestFal(image: ParsedImage, prompt: string, outputFormat: string) {
   if (!falApiKey) {
-    throw new Error("FALAI_API_KEY belum diset di Supabase Secrets.");
+    throw new Error(
+      "FALAI_API_KEY belum diset di Supabase Secrets.",
+    );
   }
 
   let objectPath = "";
@@ -245,12 +274,15 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
     objectPath = uploaded.objectPath;
 
     const response = await fetch(
-      "https://api.fal.ai/v1/flux-pro/v1.1/generate",
+      "https://api.fal.ai/v1/flux-pro/generate",
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${falApiKey}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${falApiKey}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          prompt,
+          prompt: prompt,
           image_url: uploaded.publicUrl,
           aspect_ratio: outputFormat === "story" ? "9:16" : "4:5",
           output_format: "png",
@@ -264,12 +296,16 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
       throw new Error(payload?.error?.message || `Fal.ai HTTP ${response.status}`);
     }
 
-    const resultUrl = payload.result_image_url || payload.resultImageUrl;
+    const resultUrl = payload.result_image_url ?? payload.resultImageUrl;
     if (!resultUrl) {
       throw new Error("Fal.ai tidak mengembalikan URL hasil.");
     }
 
-    return { image: await downloadAsDataUrl(resultUrl), provider: "fal", model: "flux-pro" };
+    return {
+      image: await downloadAsDataUrl(resultUrl),
+      provider: "fal",
+      model: "flux-pro",
+    };
   } finally {
     await removeTemporaryImage(objectPath);
   }
@@ -290,8 +326,10 @@ async function pollFluxTask(taskId: string) {
     if (!response.ok || payload.code !== 200) {
       throw new Error(payload.msg || `FluxAPI status HTTP ${response.status}`);
     }
+
     const successFlag = payload.data?.successFlag;
     console.log(`Polling attempt ${attempt}: successFlag = ${successFlag}`);
+
     if (successFlag === 1) {
       const resultImageUrl = payload.data?.response?.resultImageUrl;
       if (!resultImageUrl) {
@@ -303,10 +341,12 @@ async function pollFluxTask(taskId: string) {
       return resultImageUrl;
     }
     if (successFlag === 2 || successFlag === 3) {
-      const errorMsg = payload.data?.errorMessage || "FluxAPI gagal memproses gambar.";
+      const errorMsg = payload.data?.errorMessage ||
+        "FluxAPI gagal memproses gambar.";
       throw new Error(`${errorMsg} (successFlag: ${successFlag})`);
     }
   }
+
   throw new Error("FluxAPI belum selesai setelah 120 detik.");
 }
 
@@ -325,6 +365,7 @@ Deno.serve(async (request) => {
 
   try {
     const payload = await request.json();
+
     const engine = String(payload.engine || "gemini"); // gemini | flux | fal
     const image = parseDataUrl(String(payload.image || ""));
 
@@ -333,7 +374,10 @@ Deno.serve(async (request) => {
     //   - other engines build a prompt from style + extraPrompt
     const prompt = (engine === "flux" || engine === "fal")
       ? String(payload.prompt || "")
-      : buildPrompt(String(payload.style || "soft"), String(payload.prompt || ""));
+      : buildPrompt(
+        String(payload.style || "soft"),
+        String(payload.prompt || ""),
+      );
 
     if (engine === "flux") {
       return jsonResponse(
@@ -348,8 +392,14 @@ Deno.serve(async (request) => {
     if (engine === "gemini") {
       return jsonResponse(await requestGemini(image, prompt));
     }
-    return jsonResponse({ error: `Engine ${engine} tidak didukung oleh Edge Function.` }, 400);
+    return jsonResponse(
+      { error: `Engine ${engine} tidak didukung oleh Edge Function.` },
+      400,
+    );
   } catch (e) {
-    return jsonResponse({ error: e instanceof Error ? e.message : "Request tidak valid." }, 400);
+    return jsonResponse(
+      { error: e instanceof Error ? e.message : "Request tidak valid." },
+      400,
+    );
   }
 });
