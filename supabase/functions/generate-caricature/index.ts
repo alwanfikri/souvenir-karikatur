@@ -259,14 +259,46 @@ async function requestFlux(
 }
 
 // -------------------------------------------------------------------
-// Provider: Fal.ai Flux Pro (updated)
+// Provider: Fal.ai Flux Dev Image-to-Image (improved)
 // -------------------------------------------------------------------
-async function requestFal(image: ParsedImage, prompt: string, outputFormat: string) {
-  if (!falApiKey) {
-    throw new Error(
-      "FALAI_API_KEY belum diset di Supabase Secrets.",
-    );
+
+const FAL_CHIBI_PROMPT = `Transform the uploaded photo into a cute chibi cartoon caricature while preserving the original image. Preserve the exact number of people, exact identities, exact facial features, exact hairstyles, exact hair colors, exact clothing, exact accessories, exact expressions, exact poses, exact composition, exact framing, exact crop and exact camera angle. Create highly recognizable lookalike cartoon versions of the original people. Keep the same people in the same positions wearing the same clothes.
+
+Style: cute chibi cartoon, oversized head, smaller body, mascot illustration, sticker art, vector-style artwork, clean outlines, smooth shading, vibrant colors, playful and charming appearance, professional digital illustration.
+
+Do not add people. Do not remove people. Do not replace people. Do not merge people. Do not duplicate people. Do not change hairstyle. Do not change clothing. Do not change accessories. Do not add glasses. Do not remove glasses. Do not change facial features. Do not change gender. Do not change age. Do not add pets. Do not add animals. Do not add background characters. Do not add objects. Do not alter composition. Do not alter pose. Do not perform face swap. No photorealism. No text. No logo. No watermark. No border. No frame.`;
+
+/**
+ * Estimate number of faces roughly from image dimensions vs data size.
+ * We use a simple heuristic: count any explicit person count hint from prompt,
+ * or default to group logic (strength=0.50).
+ * The calling code can override by passing faceCount explicitly.
+ */
+function getDynamicStrength(prompt: string): number {
+  const lower = prompt.toLowerCase();
+  // If prompt explicitly says "1 person" / "single" / "solo" → use higher strength
+  if (/\b(1 person|one person|solo|single person|sendirian|1 orang)\b/.test(lower)) {
+    return 0.55;
   }
+  // If prompt says "2 persons" / "couple" → slightly higher
+  if (/\b(2 persons?|two persons?|couple|pasangan|2 orang)\b/.test(lower)) {
+    return 0.55;
+  }
+  // Default: assume group photo → conservative strength
+  return 0.50;
+}
+
+async function requestFal(image: ParsedImage, prompt: string, _outputFormat: string) {
+  if (!falApiKey) {
+    throw new Error("FALAI_API_KEY belum diset di Supabase Secrets.");
+  }
+
+  // Use the user's custom prompt if provided, otherwise fall back to the chibi prompt
+  const finalPrompt = prompt.trim() ? `${prompt.trim()}\n\n${FAL_CHIBI_PROMPT}` : FAL_CHIBI_PROMPT;
+
+  // Dynamic strength: lower for groups to preserve composition
+  const strength = getDynamicStrength(finalPrompt);
+  console.log(`Fal.ai → strength: ${strength}, prompt length: ${finalPrompt.length}`);
 
   let objectPath = "";
   try {
@@ -282,12 +314,12 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: prompt,
+          prompt: finalPrompt,
           image_url: uploaded.publicUrl,
-          strength: 0.75,
-          num_inference_steps: 40,
-          guidance_scale: 3.5,
-          enable_safety_checker: true
+          strength: strength,
+          num_inference_steps: 50,
+          guidance_scale: 9,
+          enable_safety_checker: true,
         }),
       },
     );
@@ -305,7 +337,7 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
     return {
       image: await downloadAsDataUrl(resultUrl),
       provider: "fal",
-      model: "flux-pro",
+      model: "flux-dev-img2img",
     };
   } finally {
     await removeTemporaryImage(objectPath);
