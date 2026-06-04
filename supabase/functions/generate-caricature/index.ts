@@ -274,7 +274,7 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
     objectPath = uploaded.objectPath;
 
     const response = await fetch(
-      "https://fal.run/fal-ai/flux-pro/v1.1",
+      "https://fal.run/fal-ai/flux/dev/image-to-image",
       {
         method: "POST",
         headers: {
@@ -284,9 +284,10 @@ async function requestFal(image: ParsedImage, prompt: string, outputFormat: stri
         body: JSON.stringify({
           prompt: prompt,
           image_url: uploaded.publicUrl,
-          aspect_ratio: outputFormat === "story" ? "9:16" : "4:5",
-          output_format: "png",
-          safety_tolerance: "2",
+          strength: 0.85,
+          num_inference_steps: 40,
+          guidance_scale: 3.5,
+          enable_safety_checker: true
         }),
       },
     );
