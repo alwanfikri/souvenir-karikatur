@@ -305,8 +305,9 @@ async function requestFal(image: ParsedImage, prompt: string, _outputFormat: str
     const uploaded = await uploadTemporaryImage(image);
     objectPath = uploaded.objectPath;
 
+    // flux-pro/kontext: context-aware style transfer — keeps people/poses, applies strong cartoon style
     const response = await fetch(
-      "https://fal.run/fal-ai/flux/dev/image-to-image",
+      "https://fal.run/fal-ai/flux-pro/kontext",
       {
         method: "POST",
         headers: {
@@ -316,10 +317,10 @@ async function requestFal(image: ParsedImage, prompt: string, _outputFormat: str
         body: JSON.stringify({
           prompt: finalPrompt,
           image_url: uploaded.publicUrl,
-          strength: strength,
-          num_inference_steps: 50,
-          guidance_scale: 9,
-          enable_safety_checker: true,
+          guidance_scale: 3.5,
+          num_inference_steps: 28,
+          output_format: "png",
+          safety_tolerance: "2",
         }),
       },
     );
@@ -337,7 +338,7 @@ async function requestFal(image: ParsedImage, prompt: string, _outputFormat: str
     return {
       image: await downloadAsDataUrl(resultUrl),
       provider: "fal",
-      model: "flux-dev-img2img",
+      model: "flux-pro-kontext",
     };
   } finally {
     await removeTemporaryImage(objectPath);
