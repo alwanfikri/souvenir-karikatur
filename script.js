@@ -1146,7 +1146,7 @@ function initGuest() {
 
   const styleSelectorGroup = document.querySelector("#styleSelectorGroup");
   if (styleSelectorGroup) {
-    if (config.aiProvider === "flux") {
+    if (config.aiProvider === "flux" || config.aiProvider === "fal") {
       styleSelectorGroup.style.display = "none";
     } else {
       styleSelectorGroup.style.display = "block";
