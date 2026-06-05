@@ -738,6 +738,12 @@ function initAdminForm() {
   document.querySelector(`input[name="frameFit"][value="${config.frameFit}"]`).checked = true;
   aiProvider.value = config.aiProvider;
   fluxPrompt.value = config.fluxPrompt || "";
+  const fluxPromptCount = document.querySelector("#fluxPromptCount");
+  function updateFluxPromptCount() {
+    if (fluxPromptCount) fluxPromptCount.textContent = `${fluxPrompt.value.length} / 2000`;
+  }
+  updateFluxPromptCount();
+  fluxPrompt.addEventListener("input", updateFluxPromptCount);
   function updateFluxPromptVisibility() {
     if (aiProvider.value === "flux" || aiProvider.value === "fal") {
       fluxPromptGroup.style.display = "block";
