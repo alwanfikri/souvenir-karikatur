@@ -34,6 +34,7 @@ const defaultConfig = {
   apiEndpoint: "https://bjjibgbwgvphysavutiw.supabase.co/functions/v1/generate-caricature",
   twibbon: "",
   defaultGuestName: "Nama Tamu",
+  aiImageScale: 0.9,
   fluxPrompt: "Transform the uploaded photo into a caricature in wedding souvenir style. Strictly preserve the exact head count, identities, poses, composition, and framing of the original image. Absolutely do not add any additional people, extra figures, or background characters. If there is one person in the original photo, there must be exactly one person in the output. Keep the image bright, clean, family-friendly, and ready to be overlaid with a transparent wedding twibbon/frame. Do not add any text, logos, borders, or extra frame decorations.",
   text: {
     couple: {
@@ -127,7 +128,8 @@ function normalizeConfig(config) {
     fluxPrompt = defaultConfig.fluxPrompt;
   }
   const defaultGuestName = config.defaultGuestName !== undefined ? config.defaultGuestName : defaultConfig.defaultGuestName;
-  return { ...defaultConfig, ...config, aiProvider, outputFormat, text, fluxPrompt, defaultGuestName };
+  const aiImageScale = config.aiImageScale !== undefined ? Math.min(1, Math.max(0.5, Number(config.aiImageScale))) : defaultConfig.aiImageScale;
+  return { ...defaultConfig, ...config, aiProvider, outputFormat, text, fluxPrompt, defaultGuestName, aiImageScale };
 }
 
 function getOutputSize(format = defaultConfig.outputFormat) {
@@ -530,7 +532,8 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
   const resultCanvas = document.createElement("canvas");
   resultCanvas.width = CANVAS_WIDTH;
   resultCanvas.height = CANVAS_HEIGHT;
-  drawCover(resultCanvas.getContext("2d"), image);
+  const scale = config.aiImageScale !== undefined ? config.aiImageScale : 0.9;
+  drawCover(resultCanvas.getContext("2d"), image, false, scale, "contain");
   return resultCanvas;
 }
 
@@ -683,6 +686,8 @@ function initAdminForm() {
   const defaultGuestName = document.querySelector("#adminDefaultGuestName");
   const shareCaption = document.querySelector("#shareCaption");
   const aiProvider = document.querySelector("#aiProvider");
+  const aiImageScale = document.querySelector("#aiImageScale");
+  const scaleInnerBox = document.querySelector("#scaleInnerBox");
   const fluxPrompt = document.querySelector("#fluxPrompt");
   const fluxPromptGroup = document.querySelector("#fluxPromptGroup");
   const apiEndpoint = document.querySelector("#apiEndpoint");
@@ -737,6 +742,23 @@ function initAdminForm() {
 
   document.querySelector(`input[name="frameFit"][value="${config.frameFit}"]`).checked = true;
   aiProvider.value = config.aiProvider;
+  if (aiImageScale) aiImageScale.value = Math.round((config.aiImageScale ?? 0.9) * 100);
+
+  function updateScaleBox() {
+    if (!scaleInnerBox || !aiImageScale) return;
+    const pct = Math.min(100, Math.max(50, Number(aiImageScale.value))) / 100;
+    const outerW = 54, outerH = 96;
+    const innerW = Math.round(outerW * pct);
+    const innerH = Math.round(outerH * pct);
+    const left = Math.round((outerW - innerW) / 2);
+    const top = Math.round((outerH - innerH) / 2);
+    scaleInnerBox.style.width = innerW + "px";
+    scaleInnerBox.style.height = innerH + "px";
+    scaleInnerBox.style.left = left + "px";
+    scaleInnerBox.style.top = top + "px";
+  }
+  updateScaleBox();
+  if (aiImageScale) aiImageScale.addEventListener("input", updateScaleBox);
   fluxPrompt.value = config.fluxPrompt || "";
   const fluxPromptCount = document.querySelector("#fluxPromptCount");
   function updateFluxPromptCount() {
@@ -770,6 +792,7 @@ function initAdminForm() {
       twibbon: currentTwibbon,
       fluxPrompt: fluxPrompt.value,
       defaultGuestName: defaultGuestName.value,
+      aiImageScale: aiImageScale ? Number(aiImageScale.value) / 100 : defaultConfig.aiImageScale,
       text: readTextSettings(),
     };
 
@@ -833,6 +856,7 @@ function initAdminForm() {
       twibbon: currentTwibbon,
       fluxPrompt: fluxPrompt.value,
       defaultGuestName: defaultGuestName.value,
+      aiImageScale: aiImageScale ? Number(aiImageScale.value) / 100 : defaultConfig.aiImageScale,
       text: readTextSettings(),
     };
     saveConfig(nextConfig);
@@ -950,7 +974,8 @@ function initAdminForm() {
     shareCaption,
     fluxPrompt,
     apiEndpoint,
-  ].forEach((input) => input.addEventListener("input", preview));
+    aiImageScale,
+  ].forEach((input) => input && input.addEventListener("input", preview));
   [
     placeholderTemplate,
     placeholderSize,

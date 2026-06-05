@@ -245,6 +245,23 @@
             </div>
 
             <div class="field-group">
+              <label for="aiImageScale">Skala gambar AI (% dari canvas)</label>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="flex:1;display:grid;gap:7px">
+                  <input id="aiImageScale" type="number" min="50" max="100" step="1" value="90" />
+                  <span class="field-hint">Ukuran gambar hasil AI relatif terhadap canvas. 90% = ada ruang untuk frame/twibbon. 100% = gambar penuh.</span>
+                </div>
+                <div id="scalePreviewBox" style="flex:0 0 60px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                  <div style="position:relative;width:54px;height:96px;border:1.5px solid var(--line);border-radius:5px;background:var(--paper);overflow:hidden">
+                    <div id="scaleInnerBox" style="position:absolute;background:rgba(125,150,122,0.22);border:1.5px solid #7d967a;border-radius:3px;transition:all .15s"></div>
+                    <div style="position:absolute;inset:0;border:2px solid #b86f73;border-radius:3px;pointer-events:none"></div>
+                  </div>
+                  <span style="font-size:0.72rem;color:var(--muted);font-weight:700">9:16</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="field-group">
               <label for="aiProvider">Engine karikatur</label>
               <select id="aiProvider">
                 <option value="local">Cartoon Lokal (Gratis)</option>
