@@ -44,6 +44,7 @@ const defaultConfig = {
       color: "#b86f73",
       font: "Georgia, serif",
       weight: "400",
+      fontStyle: "normal",
     },
     guest: {
       template: "Untuk {tamu}",
@@ -53,6 +54,7 @@ const defaultConfig = {
       color: "#b86f73",
       font: "Arial, sans-serif",
       weight: "400",
+      fontStyle: "normal",
     },
     date: {
       template: "{tanggal}",
@@ -62,6 +64,7 @@ const defaultConfig = {
       color: "#b86f73",
       font: "Arial, sans-serif",
       weight: "400",
+      fontStyle: "normal",
     },
   },
 };
@@ -93,6 +96,7 @@ function normalizeConfig(config) {
       y: Number(legacyText.couple?.y || legacyText.coupleY || defaultConfig.text.couple.y),
       color: legacyText.couple?.color || legacyText.color || defaultConfig.text.couple.color,
       size: Number(legacyText.couple?.size || legacyText.size || defaultConfig.text.couple.size),
+      fontStyle: legacyText.couple?.fontStyle || defaultConfig.text.couple.fontStyle,
     },
     guest: {
       ...defaultConfig.text.guest,
@@ -101,6 +105,7 @@ function normalizeConfig(config) {
       y: Number(legacyText.guest?.y || legacyText.guestY || defaultConfig.text.guest.y),
       color: legacyText.guest?.color || legacyText.color || defaultConfig.text.guest.color,
       size: Number(legacyText.guest?.size || Math.round((legacyText.size || 54) * 0.56) || defaultConfig.text.guest.size),
+      fontStyle: legacyText.guest?.fontStyle || defaultConfig.text.guest.fontStyle,
     },
     date: {
       ...defaultConfig.text.date,
@@ -109,6 +114,7 @@ function normalizeConfig(config) {
       y: Number(legacyText.date?.y || legacyText.dateY || defaultConfig.text.date.y),
       color: legacyText.date?.color || legacyText.color || defaultConfig.text.date.color,
       size: Number(legacyText.date?.size || Math.round((legacyText.size || 54) * 0.46) || defaultConfig.text.date.size),
+      fontStyle: legacyText.date?.fontStyle || defaultConfig.text.date.fontStyle,
     },
   };
   const outputFormat = OUTPUT_FORMATS[config.outputFormat] ? config.outputFormat : defaultConfig.outputFormat;
@@ -528,12 +534,12 @@ async function requestPaidAiCaricature(sourceCanvas, style, config) {
   return resultCanvas;
 }
 
-function fitText(ctx, text, x, y, maxWidth, size, family, weight = "400") {
+function fitText(ctx, text, x, y, maxWidth, size, family, weight = "400", fontStyle = "normal") {
   let fontSize = size;
-  ctx.font = `${weight} ${fontSize}px ${family}`;
+  ctx.font = `${fontStyle} ${weight} ${fontSize}px ${family}`;
   while (ctx.measureText(text).width > maxWidth && fontSize > 18) {
     fontSize -= 2;
-    ctx.font = `${weight} ${fontSize}px ${family}`;
+    ctx.font = `${fontStyle} ${weight} ${fontSize}px ${family}`;
   }
   ctx.fillText(text, x, y);
 }
@@ -560,10 +566,11 @@ function drawTextPlaceholders(ctx, config, guestName, activeKey = "") {
     const y = Number(item.y) || CANVAS_HEIGHT - 100;
     const family = item.font || "Arial, sans-serif";
     const weight = item.weight || "400";
+    const fontStyle = item.fontStyle || "normal";
 
     ctx.fillStyle = item.color || "#b86f73";
-    ctx.font = `${weight} ${size}px ${family}`;
-    fitText(ctx, text, x, y, CANVAS_WIDTH - 160, size, family, weight);
+    ctx.font = `${fontStyle} ${weight} ${size}px ${family}`;
+    fitText(ctx, text, x, y, CANVAS_WIDTH - 160, size, family, weight, fontStyle);
 
     if (key === activeKey) {
       const width = Math.min(CANVAS_WIDTH - 160, ctx.measureText(text).width + 28);
@@ -685,6 +692,7 @@ function initAdminForm() {
   const placeholderColor = document.querySelector("#placeholderColor");
   const placeholderFont = document.querySelector("#placeholderFont");
   const placeholderWeight = document.querySelector("#placeholderWeight");
+  const placeholderStyle = document.querySelector("#placeholderStyle");
   const placeholderX = document.querySelector("#placeholderX");
   const placeholderY = document.querySelector("#placeholderY");
   const centerPlaceholder = document.querySelector("#centerPlaceholder");
@@ -722,6 +730,7 @@ function initAdminForm() {
     placeholderColor.value = item.color;
     placeholderFont.value = item.font;
     placeholderWeight.value = item.weight;
+    placeholderStyle.value = item.fontStyle || "normal";
     placeholderX.value = item.x;
     placeholderY.value = item.y;
   }
@@ -798,6 +807,7 @@ function initAdminForm() {
       color: placeholderColor.value,
       font: placeholderFont.value,
       weight: placeholderWeight.value,
+      fontStyle: placeholderStyle.value || "normal",
     };
   }
 
@@ -941,6 +951,7 @@ function initAdminForm() {
     placeholderColor,
     placeholderFont,
     placeholderWeight,
+    placeholderStyle,
     placeholderX,
     placeholderY,
   ].forEach((input) => {

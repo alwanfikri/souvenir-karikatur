@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Admin Souvenir Pernikahan</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Serif+Display:ital@0;1&family=Gilda+Display&family=Marcellus&family=Cinzel:wght@400;600&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400;1,6..96,700&family=Italiana&family=Luxurious+Roman&family=Yeseva+One&family=Forum&family=Raleway:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Montserrat:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Josefin+Sans:ital,wght@0,300;0,400;1,300;1,400&family=Tenor+Sans&family=Jost:ital,wght@0,300;0,400;1,300;1,400&family=Lato:ital,wght@0,300;0,400;1,300;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Cormorant+Upright:wght@300;400;500&display=swap" rel="stylesheet" />
   </head>
   <body data-page="admin">
     <main class="app-shell">
@@ -117,8 +120,8 @@
 
               <div class="field-grid">
                 <div class="field-group">
-                  <label for="placeholderSize">Ukuran</label>
-                  <input id="placeholderSize" type="range" min="18" max="110" step="1" />
+                  <label for="placeholderSize">Ukuran (px)</label>
+                  <input id="placeholderSize" type="number" min="10" max="400" step="1" />
                 </div>
                 <div class="field-group">
                   <label for="placeholderColor">Warna</label>
@@ -126,23 +129,60 @@
                 </div>
               </div>
 
-              <div class="field-grid">
-                <div class="field-group">
-                  <label for="placeholderFont">Font</label>
-                  <select id="placeholderFont">
+              <div class="field-group">
+                <label for="placeholderFont">Font</label>
+                <select id="placeholderFont">
+                  <optgroup label="✦ Elegant — Serif klasik">
+                    <option value="'Cormorant Garamond', serif">Cormorant Garamond</option>
+                    <option value="'Cormorant Upright', serif">Cormorant Upright</option>
+                    <option value="'Playfair Display', serif">Playfair Display</option>
+                    <option value="'EB Garamond', serif">EB Garamond</option>
+                    <option value="'DM Serif Display', serif">DM Serif Display</option>
+                    <option value="'Libre Baskerville', serif">Libre Baskerville</option>
+                    <option value="'Gilda Display', serif">Gilda Display</option>
+                    <option value="'Marcellus', serif">Marcellus</option>
                     <option value="Georgia, serif">Georgia</option>
                     <option value="'Times New Roman', serif">Times New Roman</option>
+                  </optgroup>
+                  <optgroup label="◆ Luxury — Display mewah">
+                    <option value="'Cinzel', serif">Cinzel</option>
+                    <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                    <option value="'Italiana', serif">Italiana</option>
+                    <option value="'Luxurious Roman', serif">Luxurious Roman</option>
+                    <option value="'Yeseva One', serif">Yeseva One</option>
+                    <option value="'Forum', serif">Forum</option>
+                  </optgroup>
+                  <optgroup label="● Modern — Minimal kontemporer">
+                    <option value="'Raleway', sans-serif">Raleway</option>
+                    <option value="'Montserrat', sans-serif">Montserrat</option>
+                    <option value="'Josefin Sans', sans-serif">Josefin Sans</option>
+                    <option value="'Tenor Sans', sans-serif">Tenor Sans</option>
+                    <option value="'Jost', sans-serif">Jost</option>
+                    <option value="'Lato', sans-serif">Lato</option>
                     <option value="Arial, sans-serif">Arial</option>
                     <option value="'Segoe UI', sans-serif">Segoe UI</option>
-                    <option value="'Brush Script MT', cursive">Brush Script</option>
-                  </select>
-                </div>
+                  </optgroup>
+                  <optgroup label="~ Kursif">
+                    <option value="'Brush Script MT', cursive">Brush Script MT</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div class="field-grid">
                 <div class="field-group">
                   <label for="placeholderWeight">Tebal</label>
                   <select id="placeholderWeight">
+                    <option value="300">Light</option>
                     <option value="400">Normal</option>
-                    <option value="600">Semi bold</option>
+                    <option value="600">Semi Bold</option>
                     <option value="700">Bold</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="placeholderStyle">Gaya</label>
+                  <select id="placeholderStyle">
+                    <option value="normal">Normal</option>
+                    <option value="italic">Italic</option>
                   </select>
                 </div>
               </div>
