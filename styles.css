@@ -224,6 +224,7 @@ canvas {
   display: block;
   object-fit: contain;
   cursor: move;
+  touch-action: none;
 }
 
 .camera-empty {

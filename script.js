@@ -21,6 +21,8 @@ const OUTPUT_FORMATS = {
 let CANVAS_WIDTH = OUTPUT_FORMATS.portrait.width;
 let CANVAS_HEIGHT = OUTPUT_FORMATS.portrait.height;
 const DEFAULT_MANAGER_PASSWORD = "admin123";
+const SYSTEM_FONTS = new Set(["Arial", "Segoe UI", "Georgia", "Times New Roman", "Brush Script MT"]);
+const loadedFontFamilies = new Map();
 
 const defaultConfig = {
   bride: "Raka",
@@ -170,6 +172,39 @@ function applyOutputFormat(format, ...canvases) {
     element.style.aspectRatio = `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`;
   });
   return size;
+}
+
+function getContainedCanvasRect(canvas) {
+  const elementRect = canvas.getBoundingClientRect();
+  const sourceRatio = canvas.width / canvas.height;
+  const elementRatio = elementRect.width / elementRect.height;
+  let width = elementRect.width;
+  let height = elementRect.height;
+  let left = elementRect.left;
+  let top = elementRect.top;
+
+  if (elementRatio > sourceRatio) {
+    width = elementRect.height * sourceRatio;
+    left += (elementRect.width - width) / 2;
+  } else if (elementRatio < sourceRatio) {
+    height = elementRect.width / sourceRatio;
+    top += (elementRect.height - height) / 2;
+  }
+
+  return { left, top, width, height };
+}
+
+function pointerToCanvasPoint(canvas, event, clamp = false) {
+  const rect = getContainedCanvasRect(canvas);
+  const rawX = event.clientX - rect.left;
+  const rawY = event.clientY - rect.top;
+  if (!clamp && (rawX < 0 || rawY < 0 || rawX > rect.width || rawY > rect.height)) {
+    return null;
+  }
+  return {
+    x: (Math.max(0, Math.min(rect.width, rawX)) / rect.width) * canvas.width,
+    y: (Math.max(0, Math.min(rect.height, rawY)) / rect.height) * canvas.height,
+  };
 }
 
 function scaleTextSettings(settings, fromFormat, toFormat) {
@@ -418,6 +453,45 @@ function loadImage(src) {
     image.onerror = reject;
     image.src = src;
   });
+}
+
+function getFontFamilyName(fontStack) {
+  return String(fontStack || "Arial").split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+}
+
+async function ensureFontLoaded(fontStack, weight = "400", style = "normal") {
+  const family = getFontFamilyName(fontStack);
+  if (SYSTEM_FONTS.has(family) || !document.fonts) return true;
+  const key = `${family}:${weight}:${style}`;
+  if (!loadedFontFamilies.has(key)) {
+    const familyParam = encodeURIComponent(family).replace(/%20/g, "+");
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${familyParam}&display=swap`;
+    document.head.append(link);
+    loadedFontFamilies.set(
+      key,
+      new Promise((resolve) => {
+        link.addEventListener("load", resolve, { once: true });
+        link.addEventListener("error", resolve, { once: true });
+        window.setTimeout(resolve, 4000);
+      }).then(() => document.fonts.load(`${style} ${weight} 32px "${family}"`))
+    );
+  }
+  try {
+    await loadedFontFamilies.get(key);
+    return document.fonts.check(`${style} ${weight} 32px "${family}"`);
+  } catch {
+    return false;
+  }
+}
+
+async function ensureConfigFonts(config) {
+  return Promise.all(
+    Object.values(config.text || {}).map((item) =>
+      ensureFontLoaded(item.font, item.weight, item.fontStyle)
+    )
+  );
 }
 
 function drawCover(ctx, source, mirror = false, zoom = 1, mode = "cover") {
@@ -815,6 +889,7 @@ function initAdminForm() {
   const placeholderStrokeWidth = document.querySelector("#placeholderStrokeWidth");
   const placeholderStrokeColor = document.querySelector("#placeholderStrokeColor");
   const fontSample = document.querySelector("#fontSample");
+  const fontLoadStatus = document.querySelector("#fontLoadStatus");
   const placeholderX = document.querySelector("#placeholderX");
   const placeholderY = document.querySelector("#placeholderY");
   const centerPlaceholder = document.querySelector("#centerPlaceholder");
@@ -923,6 +998,16 @@ function initAdminForm() {
       aiImageScale: aiImageScale ? Number(aiImageScale.value) / 100 : defaultConfig.aiImageScale,
       text: readTextSettings(),
     };
+    const activeText = nextConfig.text[activePlaceholder];
+    fontLoadStatus.textContent = "Memuat font...";
+    const fontReady = await ensureFontLoaded(activeText.font, activeText.weight, activeText.fontStyle);
+    fontLoadStatus.textContent = fontReady
+      ? "Font siap digunakan."
+      : "Font gagal dimuat. Periksa koneksi internet.";
+    fontSample.style.fontFamily = activeText.font;
+    fontSample.style.fontWeight = activeText.weight;
+    fontSample.style.fontStyle = activeText.fontStyle;
+    fontSample.textContent = fillTemplate(activeText.template, nextConfig, defaultGuestName.value);
 
     const gradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     gradient.addColorStop(0, "#f0d7c6");
@@ -1195,9 +1280,11 @@ function initAdminForm() {
     preview();
   });
   canvas.addEventListener("pointerdown", (event) => {
+    const point = pointerToCanvasPoint(canvas, event);
+    if (!point) return;
     isDragging = true;
     canvas.setPointerCapture(event.pointerId);
-    moveActiveText(event);
+    moveActiveText(event, point);
   });
   canvas.addEventListener("pointermove", (event) => {
     if (isDragging) moveActiveText(event);
@@ -1205,13 +1292,15 @@ function initAdminForm() {
   canvas.addEventListener("pointerup", () => {
     isDragging = false;
   });
+  canvas.addEventListener("pointercancel", () => {
+    isDragging = false;
+  });
 
-  function moveActiveText(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH;
-    const y = ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
-    textSettings[activePlaceholder].x = Math.round(Math.max(0, Math.min(CANVAS_WIDTH, x)));
-    textSettings[activePlaceholder].y = Math.round(Math.max(0, Math.min(CANVAS_HEIGHT, y)));
+  function moveActiveText(event, initialPoint = null) {
+    const point = initialPoint || pointerToCanvasPoint(canvas, event, true);
+    if (!point) return;
+    textSettings[activePlaceholder].x = Math.round(point.x);
+    textSettings[activePlaceholder].y = Math.round(point.y);
     syncPlaceholderControls();
     preview();
   }
@@ -1605,6 +1694,7 @@ function initGuest() {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.drawImage(caricatureCanvas, 0, 0);
       const latestConfig = loadConfig();
+      await ensureConfigFonts(latestConfig);
       await drawTwibbon(ctx, latestConfig, guestName.value || "Tamu Undangan");
       drawTextPlaceholders(ctx, latestConfig, guestName.value || "Tamu Undangan");
 
