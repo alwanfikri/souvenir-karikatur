@@ -110,6 +110,24 @@
               <label for="cameraZoom">Zoom kamera</label>
               <input id="cameraZoom" type="range" min="1" max="2" step="0.05" value="1" />
             </div>
+
+            <div class="photo-editor" id="photoEditor" hidden>
+              <div class="info-box">
+                <strong>Atur posisi foto</strong>
+                <span>Geser foto langsung pada preview, lalu atur zoom dan rotasi.</span>
+              </div>
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="photoZoom">Zoom foto</label>
+                  <input id="photoZoom" type="range" min="1" max="3" step="0.05" value="1" />
+                </div>
+                <div class="field-group">
+                  <label for="photoRotation">Rotasi</label>
+                  <input id="photoRotation" type="range" min="-180" max="180" step="1" value="0" />
+                </div>
+              </div>
+              <button class="secondary-button wide" id="resetPhotoTransform" type="button">Reset Posisi Foto</button>
+            </div>
           </section>
 
           <aside class="control-panel" aria-label="Kontrol souvenir">
@@ -138,6 +156,11 @@
 
             <div class="engine-note" id="engineNote">
               Mode gratis lokal aktif. Nanti bisa diganti ke API karikatur berbayar dari panel admin.
+            </div>
+            <div class="process-progress" id="processProgress" hidden>
+              <div class="progress-track"><span id="processProgressBar"></span></div>
+              <strong id="processProgressLabel">Menyiapkan foto...</strong>
+              <button class="secondary-button" id="retryProcess" type="button" hidden>Coba Lagi</button>
             </div>
 
             <div class="compare-card" id="compareCard" hidden>
@@ -172,6 +195,18 @@
             </div>
           </aside>
         </div>
+
+        <section class="control-panel event-gallery">
+          <div class="preview-toolbar">
+            <div>
+              <strong>Galeri acara</strong>
+              <p class="status-text">Hasil terbaru dari para tamu.</p>
+            </div>
+            <button class="secondary-button" id="refreshGallery" type="button">Refresh</button>
+          </div>
+          <div class="result-grid" id="eventGalleryGrid"></div>
+          <p class="status-text" id="galleryStatus"></p>
+        </section>
       </section>
     </main>
 

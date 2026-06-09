@@ -46,6 +46,12 @@ const defaultConfig = {
       font: "Georgia, serif",
       weight: "400",
       fontStyle: "normal",
+      align: "center",
+      letterSpacing: 0,
+      opacity: 1,
+      strokeWidth: 0,
+      strokeColor: "#ffffff",
+      shadowBlur: 12,
     },
     guest: {
       template: "Untuk {tamu}",
@@ -56,6 +62,12 @@ const defaultConfig = {
       font: "Arial, sans-serif",
       weight: "400",
       fontStyle: "normal",
+      align: "center",
+      letterSpacing: 0,
+      opacity: 1,
+      strokeWidth: 0,
+      strokeColor: "#ffffff",
+      shadowBlur: 12,
     },
     date: {
       template: "{tanggal}",
@@ -66,6 +78,12 @@ const defaultConfig = {
       font: "Arial, sans-serif",
       weight: "400",
       fontStyle: "normal",
+      align: "center",
+      letterSpacing: 0,
+      opacity: 1,
+      strokeWidth: 0,
+      strokeColor: "#ffffff",
+      shadowBlur: 12,
     },
   },
 };
@@ -264,7 +282,7 @@ async function fetchTwibbonConcepts() {
 
   const params = new URLSearchParams({
     event_slug: `eq.${settings.eventSlug}`,
-    select: "id,name,image_data,output_format,frame_fit,updated_at",
+    select: "id,name,image_data,output_format,frame_fit,config,updated_at",
     order: "updated_at.desc",
   });
   const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/twibbon_concepts?${params}`, {
@@ -290,11 +308,79 @@ async function saveTwibbonConceptToCloud(concept) {
       image_data: concept.imageData,
       output_format: concept.outputFormat,
       frame_fit: concept.frameFit,
+      config: concept.config || {},
       updated_at: new Date().toISOString(),
     }),
   });
   if (!response.ok) throw new Error(`Gagal menyimpan konsep twibbon: ${response.status}`);
   return true;
+}
+
+async function deleteTwibbonConceptFromCloud(id) {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return false;
+  const params = new URLSearchParams({ id: `eq.${id}`, event_slug: `eq.${settings.eventSlug}` });
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/twibbon_concepts?${params}`, {
+    method: "DELETE",
+    headers: getSupabaseHeaders(settings),
+  });
+  if (!response.ok) throw new Error(`Gagal menghapus konsep: ${response.status}`);
+  return true;
+}
+
+async function saveGuestResultToCloud(result) {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return false;
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/guest_results`, {
+    method: "POST",
+    headers: { ...getSupabaseHeaders(settings), Prefer: "return=minimal" },
+    body: JSON.stringify({
+      event_slug: settings.eventSlug,
+      guest_name: result.guestName,
+      image_data: result.imageData,
+      engine: result.engine,
+      is_published: true,
+    }),
+  });
+  if (!response.ok) throw new Error(`Gagal menyimpan hasil: ${response.status}`);
+  return true;
+}
+
+async function fetchGuestResults(limit = 24) {
+  const settings = loadCloudSettings();
+  if (!isCloudConfigured()) return [];
+  const params = new URLSearchParams({
+    event_slug: `eq.${settings.eventSlug}`,
+    select: "id,guest_name,image_data,engine,is_published,created_at",
+    order: "created_at.desc",
+    limit: String(limit),
+  });
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/guest_results?${params}`, {
+    headers: getSupabaseHeaders(settings),
+  });
+  if (!response.ok) throw new Error(`Gagal membaca hasil: ${response.status}`);
+  return response.json();
+}
+
+async function updateGuestResult(id, changes) {
+  const settings = loadCloudSettings();
+  const params = new URLSearchParams({ id: `eq.${id}`, event_slug: `eq.${settings.eventSlug}` });
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/guest_results?${params}`, {
+    method: "PATCH",
+    headers: { ...getSupabaseHeaders(settings), Prefer: "return=minimal" },
+    body: JSON.stringify(changes),
+  });
+  if (!response.ok) throw new Error(`Gagal mengubah hasil: ${response.status}`);
+}
+
+async function deleteGuestResult(id) {
+  const settings = loadCloudSettings();
+  const params = new URLSearchParams({ id: `eq.${id}`, event_slug: `eq.${settings.eventSlug}` });
+  const response = await fetch(`${getSupabaseBaseUrl(settings)}/rest/v1/guest_results?${params}`, {
+    method: "DELETE",
+    headers: getSupabaseHeaders(settings),
+  });
+  if (!response.ok) throw new Error(`Gagal menghapus hasil: ${response.status}`);
 }
 
 function getStoredPassword(key, fallback = "") {
@@ -547,6 +633,20 @@ function fitText(ctx, text, x, y, maxWidth, size, family, weight = "400", fontSt
   ctx.fillText(text, x, y);
 }
 
+function drawSpacedText(ctx, text, x, y, spacing, align) {
+  if (!spacing) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+  const widths = [...text].map((char) => ctx.measureText(char).width);
+  const total = widths.reduce((sum, width) => sum + width, 0) + spacing * Math.max(0, text.length - 1);
+  let cursor = align === "left" ? x : align === "right" ? x - total : x - total / 2;
+  [...text].forEach((char, index) => {
+    ctx.fillText(char, cursor, y);
+    cursor += widths[index] + spacing;
+  });
+}
+
 function fillTemplate(template, config, guestName) {
   return template
     .replaceAll("{mempelai}", `${config.bride} & ${config.groom}`)
@@ -571,9 +671,19 @@ function drawTextPlaceholders(ctx, config, guestName, activeKey = "") {
     const weight = item.weight || "400";
     const fontStyle = item.fontStyle || "normal";
 
+    const align = item.align || "center";
+    const letterSpacing = Number(item.letterSpacing) || 0;
+    ctx.textAlign = letterSpacing ? "left" : align;
+    ctx.globalAlpha = Number(item.opacity ?? 1);
+    ctx.shadowBlur = Number(item.shadowBlur ?? 12);
     ctx.fillStyle = item.color || "#b86f73";
     ctx.font = `${fontStyle} ${weight} ${size}px ${family}`;
-    fitText(ctx, text, x, y, CANVAS_WIDTH - 160, size, family, weight, fontStyle);
+    if (Number(item.strokeWidth) > 0) {
+      ctx.lineWidth = Number(item.strokeWidth);
+      ctx.strokeStyle = item.strokeColor || "#ffffff";
+      ctx.strokeText(text, x, y);
+    }
+    drawSpacedText(ctx, text, x, y, letterSpacing, align);
 
     if (key === activeKey) {
       const width = Math.min(CANVAS_WIDTH - 160, ctx.measureText(text).width + 28);
@@ -698,6 +808,13 @@ function initAdminForm() {
   const placeholderFont = document.querySelector("#placeholderFont");
   const placeholderWeight = document.querySelector("#placeholderWeight");
   const placeholderStyle = document.querySelector("#placeholderStyle");
+  const placeholderAlign = document.querySelector("#placeholderAlign");
+  const placeholderLetterSpacing = document.querySelector("#placeholderLetterSpacing");
+  const placeholderOpacity = document.querySelector("#placeholderOpacity");
+  const placeholderShadowBlur = document.querySelector("#placeholderShadowBlur");
+  const placeholderStrokeWidth = document.querySelector("#placeholderStrokeWidth");
+  const placeholderStrokeColor = document.querySelector("#placeholderStrokeColor");
+  const fontSample = document.querySelector("#fontSample");
   const placeholderX = document.querySelector("#placeholderX");
   const placeholderY = document.querySelector("#placeholderY");
   const centerPlaceholder = document.querySelector("#centerPlaceholder");
@@ -706,6 +823,8 @@ function initAdminForm() {
   const conceptList = document.querySelector("#twibbonConceptList");
   const saveConcept = document.querySelector("#saveTwibbonConcept");
   const applyConcept = document.querySelector("#applyTwibbonConcept");
+  const updateConcept = document.querySelector("#updateTwibbonConcept");
+  const deleteConcept = document.querySelector("#deleteTwibbonConcept");
   const refreshConcepts = document.querySelector("#refreshTwibbonConcepts");
   const conceptStatus = document.querySelector("#twibbonConceptStatus");
   const save = document.querySelector("#saveAdmin");
@@ -736,6 +855,15 @@ function initAdminForm() {
     placeholderFont.value = item.font;
     placeholderWeight.value = item.weight;
     placeholderStyle.value = item.fontStyle || "normal";
+    placeholderAlign.value = item.align || "center";
+    placeholderLetterSpacing.value = item.letterSpacing || 0;
+    placeholderOpacity.value = Math.round((item.opacity ?? 1) * 100);
+    placeholderShadowBlur.value = item.shadowBlur ?? 12;
+    placeholderStrokeWidth.value = item.strokeWidth || 0;
+    placeholderStrokeColor.value = item.strokeColor || "#ffffff";
+    fontSample.style.fontFamily = item.font;
+    fontSample.style.fontStyle = item.fontStyle || "normal";
+    fontSample.textContent = fillTemplate(item.template, config, defaultGuestName.value);
     placeholderX.value = item.x;
     placeholderY.value = item.y;
   }
@@ -837,6 +965,12 @@ function initAdminForm() {
       font: placeholderFont.value,
       weight: placeholderWeight.value,
       fontStyle: placeholderStyle.value || "normal",
+      align: placeholderAlign.value || "center",
+      letterSpacing: Number(placeholderLetterSpacing.value) || 0,
+      opacity: Number(placeholderOpacity.value) / 100,
+      shadowBlur: Number(placeholderShadowBlur.value) || 0,
+      strokeWidth: Number(placeholderStrokeWidth.value) || 0,
+      strokeColor: placeholderStrokeColor.value,
     };
   }
 
@@ -930,12 +1064,38 @@ function initAdminForm() {
         imageData: currentTwibbon,
         outputFormat: activeFormat,
         frameFit: checkedValue("frameFit"),
+        config: { ...loadConfig(), outputFormat: activeFormat, frameFit: checkedValue("frameFit"), twibbon: currentTwibbon, text: readTextSettings() },
       });
       conceptStatus.textContent = "Konsep tersimpan ke cloud.";
       await refreshTwibbonConceptList();
     } catch (error) {
       console.warn(error);
       conceptStatus.textContent = "Gagal menyimpan konsep. Cek table/policy Supabase.";
+    }
+  });
+
+  updateConcept.addEventListener("click", async () => {
+    const selected = twibbonConcepts.find((concept) => concept.id === conceptList.value);
+    if (!selected) {
+      conceptStatus.textContent = "Pilih konsep yang akan diperbarui.";
+      return;
+    }
+    conceptName.value = selected.name;
+    saveConcept.click();
+  });
+
+  deleteConcept.addEventListener("click", async () => {
+    const selected = twibbonConcepts.find((concept) => concept.id === conceptList.value);
+    if (!selected || !window.confirm(`Hapus konsep "${selected.name}"?`)) return;
+    conceptStatus.textContent = "Menghapus konsep...";
+    try {
+      await deleteTwibbonConceptFromCloud(selected.id);
+      conceptName.value = "";
+      await refreshTwibbonConceptList();
+      conceptStatus.textContent = "Konsep dihapus.";
+    } catch (error) {
+      console.warn(error);
+      conceptStatus.textContent = "Konsep gagal dihapus. Pastikan policy DELETE sudah dipasang.";
     }
   });
 
@@ -955,6 +1115,15 @@ function initAdminForm() {
     }
     if (selected.frame_fit) {
       document.querySelector(`input[name="frameFit"][value="${selected.frame_fit}"]`).checked = true;
+    }
+    if (selected.config && Object.keys(selected.config).length) {
+      const conceptConfig = normalizeConfig({ ...loadConfig(), ...selected.config, twibbon: selected.image_data });
+      textSettings = structuredClone(conceptConfig.text);
+      bride.value = conceptConfig.bride;
+      groom.value = conceptConfig.groom;
+      date.value = conceptConfig.date;
+      title.value = conceptConfig.title;
+      shareCaption.value = conceptConfig.shareCaption;
     }
     conceptName.value = selected.name;
     saveConfig({ ...loadConfig(), twibbon: currentTwibbon, outputFormat: activeFormat, frameFit: checkedValue("frameFit") });
@@ -983,6 +1152,12 @@ function initAdminForm() {
     placeholderFont,
     placeholderWeight,
     placeholderStyle,
+    placeholderAlign,
+    placeholderLetterSpacing,
+    placeholderOpacity,
+    placeholderShadowBlur,
+    placeholderStrokeWidth,
+    placeholderStrokeColor,
     placeholderX,
     placeholderY,
   ].forEach((input) => {
@@ -1057,6 +1232,57 @@ function initAdminForm() {
     })
     .catch((error) => console.warn(error));
   refreshTwibbonConceptList();
+  initAdminResultManager();
+}
+
+function renderResultCards(container, rows, adminMode = false) {
+  container.innerHTML = "";
+  rows.forEach((row) => {
+    const card = document.createElement("article");
+    card.className = "result-card";
+    const image = document.createElement("img");
+    image.src = row.image_data;
+    image.alt = `Souvenir ${row.guest_name}`;
+    const title = document.createElement("strong");
+    title.textContent = row.guest_name;
+    card.append(image, title);
+    if (adminMode) {
+      const actions = document.createElement("div");
+      actions.className = "result-actions";
+      actions.innerHTML = `<button class="secondary-button" data-action="publish">${row.is_published ? "Sembunyikan" : "Tampilkan"}</button><a class="secondary-button" download="souvenir-${row.guest_name}.png" href="${row.image_data}">Unduh</a><button class="danger-button" data-action="delete">Hapus</button>`;
+      actions.querySelector('[data-action="publish"]').addEventListener("click", async () => {
+        await updateGuestResult(row.id, { is_published: !row.is_published });
+        initAdminResultManager();
+      });
+      actions.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+        if (!window.confirm(`Hapus hasil ${row.guest_name}?`)) return;
+        await deleteGuestResult(row.id);
+        initAdminResultManager();
+      });
+      card.append(actions);
+    }
+    container.append(card);
+  });
+}
+
+async function initAdminResultManager() {
+  const grid = document.querySelector("#adminResultGrid");
+  const status = document.querySelector("#guestResultsStatus");
+  const refresh = document.querySelector("#refreshGuestResults");
+  if (!grid) return;
+  status.textContent = "Memuat riwayat hasil...";
+  try {
+    const rows = await fetchGuestResults(60);
+    renderResultCards(grid, rows, true);
+    status.textContent = rows.length ? `${rows.length} hasil ditemukan.` : "Belum ada hasil atau tabel guest_results belum diisi.";
+  } catch (error) {
+    console.warn(error);
+    status.textContent = "Riwayat belum tersedia. Jalankan SQL guest_results di SUPABASE_SETUP.md.";
+  }
+  if (refresh && !refresh.dataset.bound) {
+    refresh.dataset.bound = "true";
+    refresh.addEventListener("click", initAdminResultManager);
+  }
 }
 
 function initManager() {
@@ -1174,6 +1400,14 @@ function initGuest() {
   const adminLogin = document.querySelector("#guestAdminLogin");
   const adminCancel = document.querySelector("#guestAdminCancel");
   const adminStatus = document.querySelector("#guestAdminStatus");
+  const photoEditor = document.querySelector("#photoEditor");
+  const photoZoom = document.querySelector("#photoZoom");
+  const photoRotation = document.querySelector("#photoRotation");
+  const resetPhotoTransform = document.querySelector("#resetPhotoTransform");
+  const processProgress = document.querySelector("#processProgress");
+  const processProgressBar = document.querySelector("#processProgressBar");
+  const processProgressLabel = document.querySelector("#processProgressLabel");
+  const retryProcess = document.querySelector("#retryProcess");
 
   let sourceImage = null;
   let lastBlob = null;
@@ -1181,6 +1415,31 @@ function initGuest() {
   let currentFacing = checkedValue("cameraFacing") || "user";
   let currentZoom = Number(cameraZoom.value) || 1;
   let zoomCapabilities = null;
+  let photoTransform = { zoom: 1, rotation: 0, x: 0, y: 0 };
+  let photoDragging = false;
+  let dragStart = null;
+
+  function setProgress(percent, label, failed = false) {
+    processProgress.hidden = false;
+    processProgressBar.style.width = `${percent}%`;
+    processProgressBar.classList.toggle("failed", failed);
+    processProgressLabel.textContent = label;
+    retryProcess.hidden = !failed;
+  }
+
+  function drawTransformedPhoto(targetCtx, source) {
+    const width = source.videoWidth || source.width;
+    const height = source.videoHeight || source.height;
+    const baseScale = Math.min(CANVAS_WIDTH / width, CANVAS_HEIGHT / height);
+    targetCtx.save();
+    targetCtx.fillStyle = "#f8f2ea";
+    targetCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    targetCtx.translate(CANVAS_WIDTH / 2 + photoTransform.x, CANVAS_HEIGHT / 2 + photoTransform.y);
+    targetCtx.rotate((photoTransform.rotation * Math.PI) / 180);
+    targetCtx.scale(baseScale * photoTransform.zoom, baseScale * photoTransform.zoom);
+    targetCtx.drawImage(source, -width / 2, -height / 2);
+    targetCtx.restore();
+  }
 
   document.querySelector("#guestTitle").textContent = config.title;
   document.querySelector("#coupleName").textContent = `${config.bride} & ${config.groom}`;
@@ -1321,7 +1580,7 @@ function initGuest() {
     const originalCtx = originalCanvas.getContext("2d");
 
     if (sourceImage) {
-      drawCover(originalCtx, sourceImage, false, currentZoom, "contain");
+      drawTransformedPhoto(originalCtx, sourceImage);
     } else if (camera.srcObject) {
       drawCover(originalCtx, camera, currentFacing === "user", zoomCapabilities ? 1 : currentZoom, "contain");
     } else {
@@ -1337,8 +1596,11 @@ function initGuest() {
         ? { message: `Sedang memproses foto dengan ${loadConfig().aiProvider === "flux" ? "FLUX Kontext" : (loadConfig().aiProvider === "fal" ? "Fal.ai Flux Pro" : "Gemini API")}...` }
         : { message: "Sedang memproses foto dengan Cartoon Lokal..." }
     );
+    setProgress(18, "Menyiapkan foto...");
     try {
+      setProgress(42, loadConfig().aiProvider === "local" ? "Membuat efek karikatur..." : "Mengirim foto ke engine AI...");
       const caricatureCanvas = await generateCaricature(originalCanvas, checkedValue("style"), loadConfig());
+      setProgress(78, "Memasang twibbon dan teks...");
       updateEngineNote(generateCaricature.lastStatus);
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.drawImage(caricatureCanvas, 0, 0);
@@ -1353,11 +1615,27 @@ function initGuest() {
       compareCard.hidden = false;
       setCompare(compareSlider.value);
 
-      canvas.toBlob((blob) => {
+      canvas.toBlob(async (blob) => {
         lastBlob = blob;
         saveGift.disabled = !blob;
         shareGift.disabled = !blob;
+        if (blob) {
+          setProgress(100, "Selesai. Hasil siap disimpan atau dikirim.");
+          try {
+            await saveGuestResultToCloud({
+              guestName: guestName.value.trim(),
+              imageData: canvas.toDataURL("image/jpeg", 0.82),
+              engine: latestConfig.aiProvider,
+            });
+            loadEventGallery();
+          } catch (error) {
+            console.warn("Result history unavailable.", error);
+          }
+        }
       }, "image/png");
+    } catch (error) {
+      console.warn(error);
+      setProgress(100, `Proses gagal: ${error.message || "coba ulang beberapa saat lagi."}`, true);
     } finally {
       renderGift.disabled = false;
       renderGift.innerHTML = '<span class="button-icon">GO</span>Buat Karikatur';
@@ -1382,7 +1660,7 @@ function initGuest() {
   function showPhotoPreview() {
     if (!sourceImage) return;
     applyOutputFormat(loadConfig().outputFormat, canvas);
-    drawCover(ctx, sourceImage, false, currentZoom, "contain");
+    drawTransformedPhoto(ctx, sourceImage);
     canvas.style.display = "block";
     camera.style.display = "none";
     cameraEmpty.style.display = "none";
@@ -1391,6 +1669,14 @@ function initGuest() {
     shareGift.disabled = true;
     renderGift.innerHTML = '<span class="button-icon">GO</span>Buat Karikatur';
     updateEngineNote();
+    photoEditor.hidden = false;
+  }
+
+  function resetTransform() {
+    photoTransform = { zoom: 1, rotation: 0, x: 0, y: 0 };
+    photoZoom.value = "1";
+    photoRotation.value = "0";
+    showPhotoPreview();
   }
 
   async function shareSouvenir() {
@@ -1463,6 +1749,32 @@ function initGuest() {
   saveGift.addEventListener("click", downloadSouvenir);
   shareGift.addEventListener("click", shareSouvenir);
   compareSlider.addEventListener("input", () => setCompare(compareSlider.value));
+  photoZoom.addEventListener("input", () => {
+    photoTransform.zoom = Number(photoZoom.value);
+    showPhotoPreview();
+  });
+  photoRotation.addEventListener("input", () => {
+    photoTransform.rotation = Number(photoRotation.value);
+    showPhotoPreview();
+  });
+  resetPhotoTransform.addEventListener("click", resetTransform);
+  retryProcess.addEventListener("click", renderSouvenir);
+  canvas.addEventListener("pointerdown", (event) => {
+    if (!sourceImage || photoEditor.hidden) return;
+    photoDragging = true;
+    dragStart = { x: event.clientX, y: event.clientY, photoX: photoTransform.x, photoY: photoTransform.y };
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (!photoDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    photoTransform.x = dragStart.photoX + ((event.clientX - dragStart.x) / rect.width) * CANVAS_WIDTH;
+    photoTransform.y = dragStart.photoY + ((event.clientY - dragStart.y) / rect.height) * CANVAS_HEIGHT;
+    showPhotoPreview();
+  });
+  canvas.addEventListener("pointerup", () => {
+    photoDragging = false;
+  });
   adminLink.addEventListener("click", openAdminGate);
   adminLogin.addEventListener("click", submitAdminGate);
   adminCancel.addEventListener("click", closeAdminGate);
@@ -1478,6 +1790,7 @@ function initGuest() {
     const image = new Image();
     image.onload = () => {
       sourceImage = image;
+      photoTransform = { zoom: 1, rotation: 0, x: 0, y: 0 };
       showPhotoPreview();
     };
     image.src = URL.createObjectURL(file);
@@ -1490,6 +1803,7 @@ function initGuest() {
     const image = new Image();
     image.onload = () => {
       sourceImage = image;
+      photoTransform = { zoom: 1, rotation: 0, x: 0, y: 0 };
       showPhotoPreview();
     };
     image.src = URL.createObjectURL(file);
@@ -1514,6 +1828,22 @@ function initGuest() {
       }
     })
     .catch((error) => console.warn(error));
+
+  async function loadEventGallery() {
+    const grid = document.querySelector("#eventGalleryGrid");
+    const status = document.querySelector("#galleryStatus");
+    if (!grid) return;
+    try {
+      const rows = (await fetchGuestResults(24)).filter((row) => row.is_published);
+      renderResultCards(grid, rows);
+      status.textContent = rows.length ? `${rows.length} hasil terbaru.` : "Belum ada hasil di galeri.";
+    } catch (error) {
+      console.warn(error);
+      status.textContent = "Galeri belum aktif.";
+    }
+  }
+  document.querySelector("#refreshGallery")?.addEventListener("click", loadEventGallery);
+  loadEventGallery();
 }
 
 if (page === "admin") initAdmin();

@@ -129,6 +129,45 @@
                 </div>
               </div>
 
+              <div class="font-sample" id="fontSample">Contoh Nama Mempelai</div>
+
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="placeholderAlign">Perataan</label>
+                  <select id="placeholderAlign">
+                    <option value="left">Kiri</option>
+                    <option value="center">Tengah</option>
+                    <option value="right">Kanan</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="placeholderLetterSpacing">Jarak huruf (px)</label>
+                  <input id="placeholderLetterSpacing" type="number" min="-5" max="30" step="1" />
+                </div>
+              </div>
+
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="placeholderOpacity">Transparansi (%)</label>
+                  <input id="placeholderOpacity" type="number" min="10" max="100" step="5" />
+                </div>
+                <div class="field-group">
+                  <label for="placeholderShadowBlur">Bayangan</label>
+                  <input id="placeholderShadowBlur" type="number" min="0" max="50" step="1" />
+                </div>
+              </div>
+
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="placeholderStrokeWidth">Tebal outline</label>
+                  <input id="placeholderStrokeWidth" type="number" min="0" max="20" step="1" />
+                </div>
+                <div class="field-group">
+                  <label for="placeholderStrokeColor">Warna outline</label>
+                  <input id="placeholderStrokeColor" type="color" />
+                </div>
+              </div>
+
               <div class="field-group">
                 <label for="placeholderFont">Font</label>
                 <select id="placeholderFont">
@@ -247,6 +286,10 @@
                 <button class="secondary-button wide" id="saveTwibbonConcept" type="button">Simpan Konsep</button>
                 <button class="secondary-button wide" id="applyTwibbonConcept" type="button">Pakai Konsep</button>
               </div>
+              <div class="action-grid">
+                <button class="secondary-button wide" id="updateTwibbonConcept" type="button">Perbarui Konsep</button>
+                <button class="danger-button wide" id="deleteTwibbonConcept" type="button">Hapus Konsep</button>
+              </div>
               <button class="secondary-button wide" id="refreshTwibbonConcepts" type="button">Refresh Konsep</button>
               <p class="status-text" id="twibbonConceptStatus"></p>
             </div>
@@ -328,6 +371,18 @@
             </div>
           </section>
         </div>
+
+        <section class="control-panel result-manager">
+          <div class="preview-toolbar">
+            <div>
+              <strong>Riwayat hasil & galeri acara</strong>
+              <p class="status-text">Sembunyikan dari galeri, unduh, atau hapus hasil tamu.</p>
+            </div>
+            <button class="secondary-button" id="refreshGuestResults" type="button">Refresh</button>
+          </div>
+          <div class="result-grid" id="adminResultGrid"></div>
+          <p class="status-text" id="guestResultsStatus"></p>
+        </section>
       </section>
     </main>
 

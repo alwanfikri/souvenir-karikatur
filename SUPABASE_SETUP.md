@@ -20,8 +20,22 @@ create table if not exists public.twibbon_concepts (
   image_data text not null,
   output_format text not null default 'portrait',
   frame_fit text not null default 'cover',
+  config jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   unique (event_slug, name)
+);
+
+alter table public.twibbon_concepts
+add column if not exists config jsonb not null default '{}'::jsonb;
+
+create table if not exists public.guest_results (
+  id uuid primary key default gen_random_uuid(),
+  event_slug text not null,
+  guest_name text not null,
+  image_data text not null,
+  engine text not null default 'local',
+  is_published boolean not null default true,
+  created_at timestamptz not null default now()
 );
 ```
 
@@ -32,6 +46,7 @@ Untuk demo cepat, policy berikut mengizinkan browser membaca dan menulis event d
 ```sql
 alter table public.events enable row level security;
 alter table public.twibbon_concepts enable row level security;
+alter table public.guest_results enable row level security;
 
 drop policy if exists "events_select_public" on public.events;
 drop policy if exists "events_insert_public" on public.events;
@@ -40,6 +55,8 @@ drop policy if exists "events_update_public" on public.events;
 drop policy if exists "twibbon_concepts_select_public" on public.twibbon_concepts;
 drop policy if exists "twibbon_concepts_insert_public" on public.twibbon_concepts;
 drop policy if exists "twibbon_concepts_update_public" on public.twibbon_concepts;
+drop policy if exists "twibbon_concepts_delete_public" on public.twibbon_concepts;
+drop policy if exists "guest_results_all_public" on public.guest_results;
 
 create policy "events_select_public"
 on public.events
@@ -72,6 +89,12 @@ on public.twibbon_concepts
 for update
 using (true)
 with check (true);
+
+create policy "twibbon_concepts_delete_public"
+on public.twibbon_concepts for delete using (true);
+
+create policy "guest_results_all_public"
+on public.guest_results for all using (true) with check (true);
 ```
 
 ## 3. Isi Manager

@@ -506,6 +506,95 @@ button:disabled {
   background: #fffefd;
 }
 
+.danger-button {
+  min-height: 48px;
+  border: 1px solid #b85d5d;
+  color: #8d3030;
+  background: #fff4f2;
+}
+
+.font-sample {
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #fff;
+  font-size: 1.8rem;
+  text-align: center;
+}
+
+.photo-editor,
+.process-progress {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  background: var(--paper);
+}
+
+.progress-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e5ddd2;
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--sage);
+  transition: width 0.25s ease;
+}
+
+.progress-track span.failed {
+  background: #b85d5d;
+}
+
+.event-gallery,
+.result-manager {
+  margin-top: 18px;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.result-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px;
+  display: grid;
+  gap: 9px;
+  background: var(--paper);
+}
+
+.result-card img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.result-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.result-actions button,
+.result-actions a {
+  min-height: 36px;
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
 .button-icon {
   font-size: 0.75rem;
   line-height: 1;
